@@ -45,6 +45,7 @@ export default function AlunosPage() {
     dia_vencimento: '10',
     primeiro_pagamento_confirmado: false,
     forma_pagamento_inicial: 'pix',
+    treino_hipertrofia: false,
   });
 
   useEffect(() => { loadAll(); }, []);
@@ -92,6 +93,7 @@ export default function AlunosPage() {
       endereco: form.endereco || null, status: form.status,
       convenio_id: form.convenio_id || null, observacoes: form.observacoes || null,
       dia_vencimento: parseInt(form.dia_vencimento) || 10,
+      treino_hipertrofia: form.treino_hipertrofia,
     };
 
     if (editingAluno) {
@@ -209,13 +211,13 @@ export default function AlunosPage() {
     setEditingAluno(aluno);
     const matAtiva = aluno.matriculas?.find((m: any) => m.status === 'ativa' || m.status === 'suspensa');
     const dataInicioMat = matAtiva?.data_inicio || '';
-    setForm({ nome: aluno.nome, email: aluno.email, telefone: aluno.telefone, cpf: aluno.cpf || '', data_nascimento: aluno.data_nascimento || '', endereco: aluno.endereco || '', status: aluno.status, convenio_id: aluno.convenio_id || '', observacoes: aluno.observacoes || '', data_inicio: dataInicioMat, dia_vencimento: String((aluno as any).dia_vencimento || '10'), primeiro_pagamento_confirmado: false, forma_pagamento_inicial: 'pix' });
+    setForm({ nome: aluno.nome, email: aluno.email, telefone: aluno.telefone, cpf: aluno.cpf || '', data_nascimento: aluno.data_nascimento || '', endereco: aluno.endereco || '', status: aluno.status, convenio_id: aluno.convenio_id || '', observacoes: aluno.observacoes || '', data_inicio: dataInicioMat, dia_vencimento: String((aluno as any).dia_vencimento || '10'), primeiro_pagamento_confirmado: false, forma_pagamento_inicial: 'pix', treino_hipertrofia: (aluno as any).treino_hipertrofia || false });
     setShowModal(true);
   };
 
   const handleNew = () => {
     setEditingAluno(null);
-    setForm({ nome: '', email: '', telefone: '', cpf: '', data_nascimento: '', endereco: '', status: 'ativo', convenio_id: '', observacoes: '', data_inicio: new Date().toISOString().split('T')[0], dia_vencimento: '10', primeiro_pagamento_confirmado: false, forma_pagamento_inicial: 'pix' });
+    setForm({ nome: '', email: '', telefone: '', cpf: '', data_nascimento: '', endereco: '', status: 'ativo', convenio_id: '', observacoes: '', data_inicio: new Date().toISOString().split('T')[0], dia_vencimento: '10', primeiro_pagamento_confirmado: false, forma_pagamento_inicial: 'pix', treino_hipertrofia: false });
     setSelectedMods([]);
     setShowModal(true);
   };
@@ -428,6 +430,17 @@ export default function AlunosPage() {
                   <option value="">Nenhum</option>
                   {convenios.map((c) => <option key={c.id} value={c.id}>{c.nome} ({c.desconto_percentual}% desc.)</option>)}
                 </select>
+              </div>
+
+              {/* Treinos Hipertrofia */}
+              <div className={`rounded-xl p-4 border-2 transition-colors ${form.treino_hipertrofia ? 'bg-orange-50 border-orange-400' : 'bg-dark-800 border-dark-600'}`}>
+                <label className="flex items-center gap-3 cursor-pointer">
+                  <input type="checkbox" checked={form.treino_hipertrofia} onChange={(e) => setForm({...form, treino_hipertrofia: e.target.checked})} className="rounded w-5 h-5 accent-orange-500" />
+                  <div>
+                    <p className={`font-medium ${form.treino_hipertrofia ? 'text-orange-800' : 'text-dark-200'}`}>🏋️ Ativar Treinos Hipertrofia</p>
+                    <p className={`text-xs ${form.treino_hipertrofia ? 'text-orange-600' : 'text-dark-400'}`}>Módulo especial com treinos guiados por dia da semana (sem custo adicional)</p>
+                  </div>
+                </label>
               </div>
 
               {/* Modalidades (só no cadastro novo) */}
