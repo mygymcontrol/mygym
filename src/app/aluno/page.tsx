@@ -69,6 +69,17 @@ export default function PortalAlunoPage() {
       if (byEmail) alunoData = byEmail;
     }
 
+    // Fallback: se a query com treino_hipertrofia falhar (coluna não existe ainda)
+    if (!alunoData) {
+      const { data: byUserId2 } = await supabase.from('alunos').select('id, nome, email, status').eq('user_id', user.id).single();
+      if (byUserId2) {
+        alunoData = { ...byUserId2, treino_hipertrofia: false };
+      } else {
+        const { data: byEmail2 } = await supabase.from('alunos').select('id, nome, email, status').eq('email', user.email).single();
+        if (byEmail2) alunoData = { ...byEmail2, treino_hipertrofia: false };
+      }
+    }
+
     if (!alunoData) { setLoading(false); return; }
     setAluno(alunoData);
     setTreinoHipertrofiaAtivo((alunoData as any).treino_hipertrofia || false);
