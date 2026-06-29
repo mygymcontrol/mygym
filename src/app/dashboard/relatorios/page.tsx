@@ -51,8 +51,27 @@ export default function RelatoriosPage() {
         case 'alunos': {
           const { data: alunos } = await supabase
             .from('alunos')
-            .select('nome, email, telefone, cpf, status, created_at, convenios(nome)')
+            .select('id, nome, email, telefone, cpf, status, created_at, convenios(nome)')
             .order('nome');
+
+          // Buscar última mensalidade de cada aluno para pegar o valor atual
+          const alunoIds = alunos?.map(a => a.id) || [];
+          let mensalidadesMap: Record<string, number> = {};
+          if (alunoIds.length > 0) {
+            const { data: mensalidades } = await supabase
+              .from('mensalidades')
+              .select('aluno_id, valor')
+              .in('aluno_id', alunoIds)
+              .order('data_vencimento', { ascending: false });
+            if (mensalidades) {
+              mensalidades.forEach(m => {
+                if (!mensalidadesMap[m.aluno_id]) {
+                  mensalidadesMap[m.aluno_id] = Number(m.valor);
+                }
+              });
+            }
+          }
+
           setData(alunos?.map(a => ({
             Nome: a.nome,
             'E-mail': a.email,
@@ -60,6 +79,7 @@ export default function RelatoriosPage() {
             CPF: a.cpf || '—',
             Status: a.status,
             Convênio: (a as any).convenios?.nome || '—',
+            Mensalidade: mensalidadesMap[a.id] ? `R$ ${mensalidadesMap[a.id].toFixed(2)}` : '—',
             'Cadastrado em': (() => { const d = (a.created_at || "").split("T")[0].split("-"); return d.length === 3 ? `${d[2]}/${d[1]}/${d[0]}` : "—"; })(),
           })) || []);
           break;
