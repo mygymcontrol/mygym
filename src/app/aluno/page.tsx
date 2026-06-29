@@ -24,6 +24,14 @@ export default function PortalAlunoPage() {
   const [matricula, setMatricula] = useState<MatriculaInfo | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // Treino tracker
+  const [treinoAberto, setTreinoAberto] = useState<string | null>(null); // modalidade_id
+  const [treinoDia, setTreinoDia] = useState<number | null>(null); // dia_semana selecionado
+  const [exercicioAtual, setExercicioAtual] = useState(0); // índice do exercício atual
+  const [exerciciosConcluidos, setExerciciosConcluidos] = useState<string[]>([]); // IDs dos exercícios concluídos hoje
+  const [treinoConcluido, setTreinoConcluido] = useState(false);
+  const [treinosHoje, setTreinosHoje] = useState<string[]>([]); // IDs dos exercícios já feitos hoje (do banco)
+
   // Frequência
   const [freqSemana, setFreqSemana] = useState(0);
   const [freqMes, setFreqMes] = useState(0);
@@ -120,6 +128,80 @@ export default function PortalAlunoPage() {
   const handleMesChange = async (novoMes: string) => {
     setMesSelecionado(novoMes);
     if (aluno) await loadFrequenciaMes(aluno.id, novoMes);
+  };
+
+  // === TREINO TRACKER ===
+  const abrirTreino = async (modalidadeId: string) => {
+    setTreinoAberto(modalidadeId);
+    setTreinoDia(null);
+    setExercicioAtual(0);
+    setExerciciosConcluidos([]);
+    setTreinoConcluido(false);
+
+    // Carregar exercícios já feitos hoje
+    if (aluno) {
+      const hoje = getHoje();
+      const { data } = await supabase
+        .from('treinos_executados')
+        .select('exercicio_id')
+        .eq('aluno_id', aluno.id)
+        .eq('data', hoje);
+      if (data) setTreinosHoje(data.map(t => t.exercicio_id));
+    }
+  };
+
+  const fecharTreino = () => {
+    setTreinoAberto(null);
+    setTreinoDia(null);
+    setExercicioAtual(0);
+    setExerciciosConcluidos([]);
+    setTreinoConcluido(false);
+  };
+
+  const selecionarDiaTreino = (dia: number) => {
+    setTreinoDia(dia);
+    setExercicioAtual(0);
+    setExerciciosConcluidos([]);
+    setTreinoConcluido(false);
+  };
+
+  const getExerciciosDoDia = (modalidadeId: string, dia: number) => {
+    const horario = horariosMods.find((h: any) => h.modalidade_id === modalidadeId && h.dia_semana === dia);
+    if (!horario || !horario.exercicios_horario) return { horario, exercicios: [] };
+    const exercicios = [...horario.exercicios_horario].sort((a: any, b: any) => (a.ordem || 0) - (b.ordem || 0));
+    return { horario, exercicios };
+  };
+
+  const marcarExercicioConcluido = async (exercicioId: string, horarioId: string) => {
+    if (!aluno) return;
+    const hoje = getHoje();
+
+    // Salvar no banco
+    await supabase.from('treinos_executados').upsert({
+      aluno_id: aluno.id,
+      exercicio_id: exercicioId,
+      horario_id: horarioId,
+      data: hoje,
+      concluido: true,
+    }, { onConflict: 'aluno_id,exercicio_id,data' });
+
+    const novosConcluidos = [...exerciciosConcluidos, exercicioId];
+    setExerciciosConcluidos(novosConcluidos);
+    setTreinosHoje([...treinosHoje, exercicioId]);
+
+    // Verificar se era o último exercício do dia
+    const { exercicios } = getExerciciosDoDia(treinoAberto!, treinoDia!);
+    if (novosConcluidos.length >= exercicios.length) {
+      setTreinoConcluido(true);
+    } else {
+      setExercicioAtual(exercicioAtual + 1);
+    }
+  };
+
+  const isDiaConcluido = (modalidadeId: string, dia: number) => {
+    const { exercicios } = getExerciciosDoDia(modalidadeId, dia);
+    if (exercicios.length === 0) return false;
+    return exercicios.every((ex: any) => treinosHoje.includes(ex.id));
   };
 
   const [comprovantesEnviados, setComprovantesEnviados] = useState<string[]>([]);
@@ -337,8 +419,11 @@ export default function PortalAlunoPage() {
             <h2 className="text-lg font-semibold text-dark-100 mb-4">🏃 Minhas Modalidades</h2>
             <div className="space-y-4">
               {alunoMods.map((am: any) => {
-                const modHorarios = horariosMods.filter((h: any) => h.modalidade_id === am.modalidades?.id);
+                const modId = am.modalidades?.id;
+                const modHorarios = horariosMods.filter((h: any) => h.modalidade_id === modId);
                 const diasSemana = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+                const isAberto = treinoAberto === modId;
+
                 return (
                   <div key={am.id} className="bg-primary-50 rounded-xl p-4">
                     <div className="flex items-center justify-between mb-3">
@@ -351,29 +436,142 @@ export default function PortalAlunoPage() {
                           <p className="text-xs text-primary-600">R$ {am.modalidades?.valor ? Number(am.modalidades.valor).toFixed(2) : '—'}/mês</p>
                         </div>
                       </div>
+                      <button
+                        onClick={() => isAberto ? fecharTreino() : abrirTreino(modId)}
+                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${isAberto ? 'bg-red-900/30 text-red-400 border border-red-800' : 'bg-primary-600 text-white'}`}
+                      >
+                        {isAberto ? '✕ Fechar' : '💪 Iniciar Treino'}
+                      </button>
                     </div>
-                    {modHorarios.length > 0 && (
+
+                    {/* Painel de Treino Interativo */}
+                    {isAberto && (
+                      <div className="mt-4 bg-dark-800 rounded-xl p-4">
+                        {/* Seleção de dia */}
+                        {treinoDia === null ? (
+                          <div>
+                            <p className="text-sm text-dark-300 mb-3 text-center">Selecione o dia do treino:</p>
+                            <div className="grid grid-cols-5 gap-2">
+                              {[1, 2, 3, 4, 5].map(dia => {
+                                const temExercicios = modHorarios.some((h: any) => h.dia_semana === dia && h.exercicios_horario && h.exercicios_horario.length > 0);
+                                const concluido = isDiaConcluido(modId, dia);
+                                return (
+                                  <button
+                                    key={dia}
+                                    onClick={() => temExercicios ? selecionarDiaTreino(dia) : null}
+                                    disabled={!temExercicios}
+                                    className={`p-3 rounded-xl text-center transition-all ${
+                                      concluido ? 'bg-green-900/40 border-2 border-green-600' :
+                                      temExercicios ? 'bg-dark-700 hover:bg-primary-900/30 border border-dark-600 hover:border-primary-600' :
+                                      'bg-dark-900 border border-dark-700 opacity-40 cursor-not-allowed'
+                                    }`}
+                                  >
+                                    <p className={`font-bold text-sm ${concluido ? 'text-green-400' : temExercicios ? 'text-dark-100' : 'text-dark-500'}`}>
+                                      {diasSemana[dia]}
+                                    </p>
+                                    {concluido && <p className="text-green-400 text-xs mt-1">✅</p>}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        ) : !treinoConcluido ? (
+                          /* Exibição do exercício atual */
+                          (() => {
+                            const { horario, exercicios } = getExerciciosDoDia(modId, treinoDia);
+                            if (exercicios.length === 0) return (
+                              <div className="text-center py-6">
+                                <p className="text-dark-400">Nenhum exercício cadastrado para este dia.</p>
+                                <button onClick={() => setTreinoDia(null)} className="btn-secondary mt-4">← Voltar</button>
+                              </div>
+                            );
+                            const exAtual = exercicios[exercicioAtual];
+                            if (!exAtual) return null;
+                            const jaFeito = treinosHoje.includes(exAtual.id);
+
+                            return (
+                              <div>
+                                {/* Header com progresso */}
+                                <div className="flex items-center justify-between mb-4">
+                                  <button onClick={() => setTreinoDia(null)} className="text-sm text-dark-400 hover:text-dark-200">← Voltar</button>
+                                  <span className="text-xs text-dark-400 font-medium">
+                                    {diasSemana[treinoDia]} — Exercício {exercicioAtual + 1} de {exercicios.length}
+                                  </span>
+                                </div>
+
+                                {/* Barra de progresso */}
+                                <div className="w-full bg-dark-700 rounded-full h-2 mb-6">
+                                  <div
+                                    className="bg-primary-600 h-2 rounded-full transition-all duration-500"
+                                    style={{ width: `${(exerciciosConcluidos.length / exercicios.length) * 100}%` }}
+                                  ></div>
+                                </div>
+
+                                {/* Card do exercício */}
+                                <div className="bg-dark-700 rounded-xl p-4 space-y-4">
+                                  {exAtual.imagem_url && (
+                                    <img
+                                      src={exAtual.imagem_url}
+                                      alt={exAtual.titulo || exAtual.descricao}
+                                      className="w-full rounded-xl max-h-64 object-cover"
+                                    />
+                                  )}
+                                  <div>
+                                    {exAtual.titulo && <h3 className="text-lg font-bold text-dark-100">{exAtual.titulo}</h3>}
+                                    {exAtual.descricao && <p className="text-dark-300 mt-1">{exAtual.descricao}</p>}
+                                  </div>
+                                </div>
+
+                                {/* Botão de marcar como feito */}
+                                <div className="mt-6 flex gap-3">
+                                  {exercicioAtual > 0 && (
+                                    <button
+                                      onClick={() => setExercicioAtual(exercicioAtual - 1)}
+                                      className="px-4 py-3 bg-dark-700 text-dark-200 rounded-xl font-medium"
+                                    >
+                                      ←
+                                    </button>
+                                  )}
+                                  <button
+                                    onClick={() => marcarExercicioConcluido(exAtual.id, horario.id)}
+                                    disabled={jaFeito}
+                                    className={`flex-1 py-3 rounded-xl font-medium text-center transition-all ${
+                                      jaFeito
+                                        ? 'bg-green-900/30 text-green-400 border border-green-800'
+                                        : 'bg-primary-600 text-white hover:bg-primary-700 active:scale-95'
+                                    }`}
+                                  >
+                                    {jaFeito ? '✅ Já executado' : '✅ Concluído — Próximo'}
+                                  </button>
+                                </div>
+                              </div>
+                            );
+                          })()
+                        ) : (
+                          /* Treino concluído */
+                          <div className="text-center py-8">
+                            <span className="text-6xl block mb-4">🎉</span>
+                            <h3 className="text-2xl font-bold text-dark-100 mb-2">Treino Concluído!</h3>
+                            <p className="text-dark-400 mb-6">Parabéns! Você completou o treino de {diasSemana[treinoDia]}.</p>
+                            <div className="flex gap-3 justify-center">
+                              <button onClick={() => setTreinoDia(null)} className="btn-secondary">← Escolher outro dia</button>
+                              <button onClick={fecharTreino} className="btn-primary">✓ Finalizar</button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Horários (quando treino fechado) */}
+                    {!isAberto && modHorarios.length > 0 && (
                       <div className="bg-dark-800 rounded-lg p-3">
                         <p className="text-xs font-medium text-dark-400 uppercase mb-2">Horários & Treinos</p>
                         <div className="space-y-2">
                           {modHorarios.map((h: any) => (
-                            <details key={h.id} className="bg-dark-700 rounded-lg">
-                              <summary className="flex items-center gap-2 p-3 cursor-pointer">
-                                <span className="px-2 py-0.5 bg-primary-900/30 text-primary-400 rounded text-xs font-medium">{diasSemana[h.dia_semana]}</span>
-                                <span className="text-sm text-dark-200">{h.horario_inicio?.slice(0, 5)}-{h.horario_fim?.slice(0, 5)}</span>
-                                {h.descricao_treino && <span className="text-xs text-dark-400 ml-2">{h.descricao_treino.slice(0, 30)}...</span>}
-                              </summary>
-                              <div className="px-3 pb-3 space-y-2">
-                                {h.descricao_treino && <p className="text-sm text-dark-300 whitespace-pre-line">{h.descricao_treino}</p>}
-                                {h.imagem_url && <img src={h.imagem_url} alt="Treino" className="rounded-lg max-h-48 w-full object-cover" />}
-                                {h.exercicios_horario && h.exercicios_horario.length > 0 && h.exercicios_horario.map((ex: any) => (
-                                  <div key={ex.id} className="bg-dark-800 rounded-lg p-2">
-                                    <p className="text-sm text-dark-200">{ex.descricao}</p>
-                                    {ex.imagem_url && <img src={ex.imagem_url} alt="" className="mt-2 rounded-lg max-h-40 w-full object-cover" />}
-                                  </div>
-                                ))}
-                              </div>
-                            </details>
+                            <div key={h.id} className="flex items-center gap-2 p-2 bg-dark-700 rounded-lg">
+                              <span className="px-2 py-0.5 bg-primary-900/30 text-primary-400 rounded text-xs font-medium">{diasSemana[h.dia_semana]}</span>
+                              <span className="text-sm text-dark-200">{h.horario_inicio?.slice(0, 5)}-{h.horario_fim?.slice(0, 5)}</span>
+                            </div>
                           ))}
                         </div>
                       </div>
