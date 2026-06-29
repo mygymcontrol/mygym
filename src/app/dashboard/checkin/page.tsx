@@ -19,10 +19,15 @@ export default function CheckinPage() {
   const [loading, setLoading] = useState(true);
   const [qrUrl, setQrUrl] = useState('');
   const [configQr, setConfigQr] = useState('');
+  const [alunos, setAlunos] = useState<any[]>([]);
+  const [alunoSelecionado, setAlunoSelecionado] = useState('');
+  const [buscaAluno, setBuscaAluno] = useState('');
+  const [checkinManualMsg, setCheckinManualMsg] = useState('');
 
   useEffect(() => {
     loadCheckins();
     loadQrConfig();
+    loadAlunos();
   }, []);
 
   const loadCheckins = async () => {
@@ -49,6 +54,53 @@ export default function CheckinPage() {
     }
   };
 
+  const loadAlunos = async () => {
+    const { data } = await supabase
+      .from('alunos')
+      .select('id, nome')
+      .eq('status', 'ativo')
+      .order('nome');
+    if (data) setAlunos(data);
+  };
+
+  const handleCheckinManual = async () => {
+    if (!alunoSelecionado) return;
+
+    const hoje = getHoje();
+    const horario = new Date().toTimeString().slice(0, 8);
+
+    // Verificar se já fez check-in hoje
+    const { data: existing } = await supabase
+      .from('checkins')
+      .select('id')
+      .eq('aluno_id', alunoSelecionado)
+      .eq('data', hoje)
+      .single();
+
+    if (existing) {
+      setCheckinManualMsg('⚠️ Este aluno já fez check-in hoje.');
+      setTimeout(() => setCheckinManualMsg(''), 3000);
+      return;
+    }
+
+    const { error } = await supabase.from('checkins').insert({
+      aluno_id: alunoSelecionado,
+      data: hoje,
+      horario,
+    });
+
+    if (error) {
+      setCheckinManualMsg('❌ Erro ao registrar check-in.');
+    } else {
+      const aluno = alunos.find(a => a.id === alunoSelecionado);
+      setCheckinManualMsg(`✅ Check-in registrado para ${aluno?.nome}!`);
+      setAlunoSelecionado('');
+      setBuscaAluno('');
+      loadCheckins();
+    }
+    setTimeout(() => setCheckinManualMsg(''), 3000);
+  };
+
   const generateQrCode = async () => {
     // A URL do checkin aponta para a página pública de check-in
     const checkinUrl = `${window.location.origin}/checkin/`;
@@ -70,47 +122,100 @@ export default function CheckinPage() {
   return (
     <DashboardLayout activeMenu="checkin" title="Check-in por QR Code">
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* QR Code */}
-        <div className="card text-center">
-          <h2 className="text-lg font-semibold text-dark-100 mb-4">QR Code da Academia</h2>
-          <p className="text-sm text-dark-400 mb-6">
-            Imprima este QR Code e coloque na recepção. Os alunos escanearão para marcar presença.
-          </p>
+        {/* Coluna Esquerda: QR Code + Check-in Manual */}
+        <div className="space-y-8">
+          {/* QR Code */}
+          <div className="card text-center">
+            <h2 className="text-lg font-semibold text-dark-100 mb-4">QR Code da Academia</h2>
+            <p className="text-sm text-dark-400 mb-6">
+              Imprima este QR Code e coloque na recepção. Os alunos escanearão para marcar presença.
+            </p>
 
-          {qrUrl ? (
-            <div className="space-y-4">
-              <div className="inline-block p-4 bg-dark-800 border-2 border-dark-200 rounded-2xl">
-                <img
-                  src={qrImageUrl}
-                  alt="QR Code Check-in"
-                  className="w-64 h-64 mx-auto"
-                />
+            {qrUrl ? (
+              <div className="space-y-4">
+                <div className="inline-block p-4 bg-dark-800 border-2 border-dark-200 rounded-2xl">
+                  <img
+                    src={qrImageUrl}
+                    alt="QR Code Check-in"
+                    className="w-64 h-64 mx-auto"
+                  />
+                </div>
+                <p className="text-xs text-dark-400 break-all">{qrUrl}</p>
+                <div className="flex justify-center gap-3">
+                  <a
+                    href={qrImageUrl}
+                    download="qrcode-checkin.png"
+                    className="btn-primary"
+                  >
+                    📥 Baixar QR Code
+                  </a>
+                  <button onClick={generateQrCode} className="btn-secondary">
+                    🔄 Regenerar
+                  </button>
+                </div>
               </div>
-              <p className="text-xs text-dark-400 break-all">{qrUrl}</p>
-              <div className="flex justify-center gap-3">
-                <a
-                  href={qrImageUrl}
-                  download="qrcode-checkin.png"
-                  className="btn-primary"
-                >
-                  📥 Baixar QR Code
-                </a>
-                <button onClick={generateQrCode} className="btn-secondary">
-                  🔄 Regenerar
+            ) : (
+              <div className="py-8">
+                <span className="text-6xl block mb-4">📱</span>
+                <button onClick={generateQrCode} className="btn-primary">
+                  Gerar QR Code
                 </button>
               </div>
-            </div>
-          ) : (
-            <div className="py-8">
-              <span className="text-6xl block mb-4">📱</span>
-              <button onClick={generateQrCode} className="btn-primary">
-                Gerar QR Code
+            )}
+          </div>
+
+          {/* Check-in Manual */}
+          <div className="card">
+            <h2 className="text-lg font-semibold text-dark-100 mb-4">✋ Check-in Manual</h2>
+            <p className="text-sm text-dark-400 mb-4">
+              Selecione o aluno para registrar a presença manualmente.
+            </p>
+
+            <div className="space-y-3">
+              <div>
+                <input
+                  type="text"
+                  placeholder="Buscar aluno pelo nome..."
+                  value={buscaAluno}
+                  onChange={(e) => setBuscaAluno(e.target.value)}
+                  className="input-field mb-2"
+                />
+                <select
+                  value={alunoSelecionado}
+                  onChange={(e) => setAlunoSelecionado(e.target.value)}
+                  className="input-field"
+                >
+                  <option value="">Selecione o aluno</option>
+                  {alunos
+                    .filter(a => a.nome.toLowerCase().includes(buscaAluno.toLowerCase()))
+                    .map((aluno) => (
+                      <option key={aluno.id} value={aluno.id}>{aluno.nome}</option>
+                    ))}
+                </select>
+              </div>
+
+              <button
+                onClick={handleCheckinManual}
+                disabled={!alunoSelecionado}
+                className="btn-primary w-full disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                ✅ Confirmar Check-in
               </button>
+
+              {checkinManualMsg && (
+                <div className={`p-3 rounded-lg text-sm text-center font-medium ${
+                  checkinManualMsg.includes('✅') ? 'bg-green-900/30 text-green-400' :
+                  checkinManualMsg.includes('⚠️') ? 'bg-yellow-900/30 text-yellow-400' :
+                  'bg-red-900/30 text-red-400'
+                }`}>
+                  {checkinManualMsg}
+                </div>
+              )}
             </div>
-          )}
+          </div>
         </div>
 
-        {/* Check-ins de hoje */}
+        {/* Coluna Direita: Check-ins de hoje */}
         <div className="card">
           <h2 className="text-lg font-semibold text-dark-100 mb-4">
             Check-ins de Hoje ({checkins.length})
