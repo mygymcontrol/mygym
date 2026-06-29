@@ -168,31 +168,48 @@ export default function CheckinPage() {
           <div className="card">
             <h2 className="text-lg font-semibold text-dark-100 mb-4">✋ Check-in Manual</h2>
             <p className="text-sm text-dark-400 mb-4">
-              Selecione o aluno para registrar a presença manualmente.
+              Digite o nome do aluno para registrar a presença manualmente.
             </p>
 
             <div className="space-y-3">
-              <div>
+              <div className="relative">
                 <input
                   type="text"
-                  placeholder="Buscar aluno pelo nome..."
+                  placeholder="Digite o nome do aluno..."
                   value={buscaAluno}
-                  onChange={(e) => setBuscaAluno(e.target.value)}
-                  className="input-field mb-2"
-                />
-                <select
-                  value={alunoSelecionado}
-                  onChange={(e) => setAlunoSelecionado(e.target.value)}
+                  onChange={(e) => { setBuscaAluno(e.target.value); setAlunoSelecionado(''); }}
                   className="input-field"
-                >
-                  <option value="">Selecione o aluno</option>
-                  {alunos
-                    .filter(a => a.nome.toLowerCase().includes(buscaAluno.toLowerCase()))
-                    .map((aluno) => (
-                      <option key={aluno.id} value={aluno.id}>{aluno.nome}</option>
-                    ))}
-                </select>
+                />
+                {buscaAluno.length >= 2 && !alunoSelecionado && (
+                  <div className="absolute z-10 w-full mt-1 bg-dark-800 border border-dark-600 rounded-xl max-h-48 overflow-y-auto shadow-lg">
+                    {alunos
+                      .filter(a => a.nome.toLowerCase().includes(buscaAluno.toLowerCase()))
+                      .length === 0 ? (
+                        <div className="px-4 py-3 text-sm text-dark-400">Nenhum aluno encontrado.</div>
+                      ) : (
+                        alunos
+                          .filter(a => a.nome.toLowerCase().includes(buscaAluno.toLowerCase()))
+                          .map((aluno) => (
+                            <button
+                              key={aluno.id}
+                              onClick={() => { setAlunoSelecionado(aluno.id); setBuscaAluno(aluno.nome); }}
+                              className="w-full text-left px-4 py-3 text-sm text-dark-200 hover:bg-dark-700 transition-colors border-b border-dark-700 last:border-b-0"
+                            >
+                              {aluno.nome}
+                            </button>
+                          ))
+                      )}
+                  </div>
+                )}
               </div>
+
+              {alunoSelecionado && (
+                <div className="flex items-center gap-2 p-2 bg-primary-900/20 border border-primary-800 rounded-lg">
+                  <span className="text-sm text-primary-400">✓ Selecionado:</span>
+                  <span className="text-sm font-medium text-dark-100">{buscaAluno}</span>
+                  <button onClick={() => { setAlunoSelecionado(''); setBuscaAluno(''); }} className="ml-auto text-dark-400 hover:text-red-400 text-xs">✕</button>
+                </div>
+              )}
 
               <button
                 onClick={handleCheckinManual}
