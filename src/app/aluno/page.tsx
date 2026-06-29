@@ -189,12 +189,10 @@ export default function PortalAlunoPage() {
     setExerciciosConcluidos(novosConcluidos);
     setTreinosHoje([...treinosHoje, exercicioId]);
 
-    // Verificar se era o último exercício do dia
+    // Verificar se completou todos os exercícios do dia
     const { exercicios } = getExerciciosDoDia(treinoAberto!, treinoDia!);
     if (novosConcluidos.length >= exercicios.length) {
       setTreinoConcluido(true);
-    } else {
-      setExercicioAtual(exercicioAtual + 1);
     }
   };
 
@@ -522,26 +520,45 @@ export default function PortalAlunoPage() {
                                   </div>
                                 </div>
 
-                                {/* Botão de marcar como feito */}
-                                <div className="mt-6 flex gap-3">
-                                  {exercicioAtual > 0 && (
+                                {/* Navegação e botão de concluir */}
+                                <div className="mt-6 space-y-3">
+                                  {/* Botões de navegação */}
+                                  <div className="flex gap-3">
                                     <button
                                       onClick={() => setExercicioAtual(exercicioAtual - 1)}
-                                      className="px-4 py-3 bg-dark-700 text-dark-200 rounded-xl font-medium"
+                                      disabled={exercicioAtual === 0}
+                                      className={`flex-1 py-3 rounded-xl font-medium text-center transition-all ${
+                                        exercicioAtual === 0
+                                          ? 'bg-dark-800 text-dark-500 cursor-not-allowed'
+                                          : 'bg-dark-700 text-dark-200 hover:bg-dark-600 active:scale-95'
+                                      }`}
                                     >
-                                      ←
+                                      ← Anterior
                                     </button>
-                                  )}
+                                    <button
+                                      onClick={() => setExercicioAtual(exercicioAtual + 1)}
+                                      disabled={exercicioAtual >= exercicios.length - 1}
+                                      className={`flex-1 py-3 rounded-xl font-medium text-center transition-all ${
+                                        exercicioAtual >= exercicios.length - 1
+                                          ? 'bg-dark-800 text-dark-500 cursor-not-allowed'
+                                          : 'bg-dark-700 text-dark-200 hover:bg-dark-600 active:scale-95'
+                                      }`}
+                                    >
+                                      Próximo →
+                                    </button>
+                                  </div>
+
+                                  {/* Botão de marcar como concluído */}
                                   <button
                                     onClick={() => marcarExercicioConcluido(exAtual.id, horario.id)}
                                     disabled={jaFeito}
-                                    className={`flex-1 py-3 rounded-xl font-medium text-center transition-all ${
+                                    className={`w-full py-3 rounded-xl font-medium text-center transition-all ${
                                       jaFeito
                                         ? 'bg-green-900/30 text-green-400 border border-green-800'
                                         : 'bg-primary-600 text-white hover:bg-primary-700 active:scale-95'
                                     }`}
                                   >
-                                    {jaFeito ? '✅ Já executado' : '✅ Concluído — Próximo'}
+                                    {jaFeito ? '✅ Já executado' : '✅ Marcar como Concluído'}
                                   </button>
                                 </div>
                               </div>
