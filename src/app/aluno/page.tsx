@@ -110,7 +110,7 @@ export default function PortalAlunoPage() {
 
     // Carregar módulo Hipertrofia se ativo
     if (temHipertrofia) {
-      const { data: hiperMod } = await supabase.from('modalidades').select('id, nome').ilike('nome', '%hipertrofia%').eq('ativo', true).single();
+      const { data: hiperMod } = await supabase.from('modalidades').select('id, nome').eq('nome', 'TREINOS HIPERTROFIA').eq('ativo', true).single();
       if (hiperMod) {
         setHipertrofiaMod(hiperMod);
         const { data: hiperHrs } = await supabase.from('horarios_aulas').select('*, exercicios_horario(id, titulo, descricao, imagem_url, ordem)').eq('modalidade_id', hiperMod.id).order('dia_semana').order('horario_inicio');

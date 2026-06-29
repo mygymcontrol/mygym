@@ -210,17 +210,24 @@ export default function ModalidadesPage() {
           <div className="space-y-4">
             {loading ? <div className="card animate-pulse"><div className="h-20 bg-dark-700 rounded"></div></div> :
             modalidades.length === 0 ? <div className="card text-center py-12"><span className="text-4xl block mb-4">🏃</span><p className="text-dark-400">Nenhuma modalidade.</p></div> :
-            modalidades.map((mod) => (
-              <div key={mod.id} className={`card ${!mod.ativo ? 'opacity-60' : ''}`}>
+            modalidades.map((mod) => {
+              const isHipertrofia = mod.nome === 'TREINOS HIPERTROFIA';
+              return (
+              <div key={mod.id} className={`card ${!mod.ativo ? 'opacity-60' : ''} ${isHipertrofia ? 'border-2 border-orange-500/50 bg-gradient-to-br from-orange-950/20 to-dark-900' : ''}`}>
                 <div className="flex items-start justify-between mb-3">
-                  <div>
-                    <h3 className="font-semibold text-lg text-dark-100">{mod.nome}</h3>
-                    {mod.descricao && <p className="text-sm text-dark-400">{mod.descricao}</p>}
+                  <div className="flex items-center gap-3">
+                    {isHipertrofia && <span className="text-2xl">🏋️</span>}
+                    <div>
+                      <h3 className={`font-semibold text-lg ${isHipertrofia ? 'text-orange-400' : 'text-dark-100'}`}>{mod.nome}</h3>
+                      {isHipertrofia && <p className="text-xs text-orange-300/70">Módulo Especial • Treinos guiados por dia</p>}
+                      {!isHipertrofia && mod.descricao && <p className="text-sm text-dark-400">{mod.descricao}</p>}
+                    </div>
                   </div>
                   <div className="flex items-center gap-3">
-                    {mod.valor && <span className="text-lg font-bold text-primary-600">R$ {Number(mod.valor).toFixed(2)}</span>}
+                    {mod.valor && <span className={`text-lg font-bold ${isHipertrofia ? 'text-orange-400' : 'text-primary-600'}`}>R$ {Number(mod.valor).toFixed(2)}</span>}
+                    {!mod.valor && isHipertrofia && <span className="text-sm text-orange-400/70">Sem custo</span>}
                     {mod.planos && <span className="text-xs bg-dark-700 px-2 py-1 rounded">{mod.planos.nome}</span>}
-                    <span className={`px-2 py-0.5 rounded-full text-xs ${mod.ativo ? 'bg-green-100 text-green-700' : 'bg-dark-700 text-dark-400'}`}>{mod.ativo ? 'Ativa' : 'Inativa'}</span>
+                    <span className={`px-2 py-0.5 rounded-full text-xs ${mod.ativo ? (isHipertrofia ? 'bg-orange-900/30 text-orange-400' : 'bg-green-100 text-green-700') : 'bg-dark-700 text-dark-400'}`}>{mod.ativo ? 'Ativa' : 'Inativa'}</span>
                   </div>
                 </div>
 
@@ -288,7 +295,8 @@ export default function ModalidadesPage() {
                   <button onClick={() => handleDeleteMod(mod.id)} className="text-red-600 text-sm font-medium">Excluir</button>
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
         </>
       )}
