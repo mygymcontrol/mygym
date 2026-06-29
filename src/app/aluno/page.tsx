@@ -367,8 +367,8 @@ export default function PortalAlunoPage() {
                   <p className="font-semibold text-primary-800">{matricula.planos?.nome}</p>
                 </div>
                 <div>
-                  <p className="text-xs text-primary-600 font-medium">Valor</p>
-                  <p className="font-semibold text-primary-800">R$ {Number(matricula.valor_final).toFixed(2)}</p>
+                  <p className="text-xs text-primary-600 font-medium">Mensalidade</p>
+                  <p className="font-semibold text-primary-800">R$ {alunoMods.length > 0 ? alunoMods.reduce((sum: number, am: any) => sum + (Number(am.modalidades?.valor) || 0), 0).toFixed(2) : Number(matricula.valor_final).toFixed(2)}</p>
                 </div>
                 <div>
                   <p className="text-xs text-primary-600 font-medium">Início</p>
