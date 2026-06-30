@@ -1,0 +1,6 @@
+{
+  "rewrites": [
+    { "source": "/academia/:slug/", "destination": "/academia/" },
+    { "source": "/academia/:slug", "destination": "/academia/" }
+  ]
+}
