@@ -377,6 +377,7 @@ export default function PortalAlunoPage() {
             </div>
           </div>
           <div className="flex items-center gap-4">
+            <a href="/mural/" className="px-3 py-1.5 bg-primary-900/30 text-primary-400 border border-primary-800 rounded-lg text-sm font-medium hover:bg-primary-900/50 transition-colors">📢 Mural</a>
             <div className="text-right">
               <p className="font-medium text-dark-200">{aluno.nome}</p>
               <span className={`text-xs px-2 py-0.5 rounded-full ${aluno.status === 'ativo' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>{aluno.status}</span>

@@ -21,6 +21,7 @@ const menuItems = [
   { id: 'whatsapp', label: 'WhatsApp', icon: '/icons/whatsapp.png', href: '/dashboard/whatsapp/' },
   { id: 'configuracoes', label: 'Configurações', icon: '/icons/configuracoes.jpg', href: '/dashboard/configuracoes/' },
   { id: 'precadastros', label: 'Pré-Cadastros', icon: '/icons/novo-aluno.jpg', href: '/dashboard/precadastros/' },
+  { id: 'mural', label: 'Mural', icon: '/icons/whatsapp.png', href: '/mural/' },
 ];
 
 export default function Sidebar({ activeMenu }: SidebarProps) {
