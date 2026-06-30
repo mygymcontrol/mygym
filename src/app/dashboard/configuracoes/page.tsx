@@ -77,7 +77,6 @@ export default function ConfiguracoesPage() {
         payload[key] = value === '' ? null : value;
       }
     });
-    });
 
     await supabase
       .from('configuracoes')
