@@ -918,6 +918,42 @@ export default function PortalAlunoPage() {
           </div>
         )}
 
+        {/* Horário de Funcionamento */}
+        {(config as any).horario_abertura && (
+          <div className="card">
+            <h2 className="text-lg font-semibold text-dark-100 mb-4">🕐 Horário de Funcionamento</h2>
+            <div className="space-y-3">
+              <div className="bg-dark-800 rounded-xl p-4">
+                <div className="flex items-center justify-between">
+                  <span className="text-dark-200 font-medium">Segunda a Sexta</span>
+                  <span className="text-primary-400 font-bold">
+                    {(config as any).horario_abertura?.slice(0,5)} — {(config as any).horario_fechamento?.slice(0,5)}
+                  </span>
+                </div>
+                {(config as any).horario_almoco_inicio && (
+                  <div className="flex items-center justify-between mt-2 pt-2 border-t border-dark-700">
+                    <span className="text-dark-400 text-sm">Intervalo Almoço</span>
+                    <span className="text-dark-300 text-sm">
+                      {(config as any).horario_almoco_inicio?.slice(0,5)} — {(config as any).horario_almoco_fim?.slice(0,5)}
+                    </span>
+                  </div>
+                )}
+              </div>
+              {(config as any).funciona_sabado && (config as any).horario_sabado_abertura && (
+                <div className="bg-dark-800 rounded-xl p-4">
+                  <div className="flex items-center justify-between">
+                    <span className="text-dark-200 font-medium">Sábado</span>
+                    <span className="text-primary-400 font-bold">
+                      {(config as any).horario_sabado_abertura?.slice(0,5)} — {(config as any).horario_sabado_fechamento?.slice(0,5)}
+                    </span>
+                  </div>
+                </div>
+              )}
+              <p className="text-xs text-dark-500 text-center">Domingo: Fechado</p>
+            </div>
+          </div>
+        )}
+
         {/* Dados de Pagamento */}
         <div className="card">
           <h2 className="text-lg font-semibold text-dark-100 mb-4">💲 Dados para Pagamento</h2>

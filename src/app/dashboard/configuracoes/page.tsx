@@ -22,6 +22,13 @@ export default function ConfiguracoesPage() {
     banco_tipo_conta: '',
     banco_beneficiario: '',
     mensagem_cobranca: '',
+    horario_abertura: '',
+    horario_fechamento: '',
+    horario_almoco_inicio: '',
+    horario_almoco_fim: '',
+    funciona_sabado: false,
+    horario_sabado_abertura: '',
+    horario_sabado_fechamento: '',
   });
 
   useEffect(() => {
@@ -45,6 +52,13 @@ export default function ConfiguracoesPage() {
         banco_tipo_conta: data.banco_tipo_conta || '',
         banco_beneficiario: data.banco_beneficiario || '',
         mensagem_cobranca: data.mensagem_cobranca || '',
+        horario_abertura: data.horario_abertura || '',
+        horario_fechamento: data.horario_fechamento || '',
+        horario_almoco_inicio: data.horario_almoco_inicio || '',
+        horario_almoco_fim: data.horario_almoco_fim || '',
+        funciona_sabado: data.funciona_sabado || false,
+        horario_sabado_abertura: data.horario_sabado_abertura || '',
+        horario_sabado_fechamento: data.horario_sabado_fechamento || '',
       });
     }
     setLoading(false);
@@ -247,6 +261,48 @@ export default function ConfiguracoesPage() {
               <code className="bg-dark-700 px-1 rounded">{'{valor}'}</code>{' '}
               <code className="bg-dark-700 px-1 rounded">{'{vencimento}'}</code>
             </p>
+          </div>
+        </div>
+
+        {/* Horário de Funcionamento */}
+        <div className="card">
+          <h2 className="text-lg font-semibold text-dark-100 mb-2">🕐 Horário de Funcionamento</h2>
+          <p className="text-sm text-dark-400 mb-4">Visível para os alunos na área do aluno.</p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-dark-200 mb-1">Abertura (Seg-Sex)</label>
+              <input type="time" value={form.horario_abertura} onChange={(e) => setForm({...form, horario_abertura: e.target.value})} className="input-field" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-dark-200 mb-1">Fechamento (Seg-Sex)</label>
+              <input type="time" value={form.horario_fechamento} onChange={(e) => setForm({...form, horario_fechamento: e.target.value})} className="input-field" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-dark-200 mb-1">Intervalo Almoço — Início</label>
+              <input type="time" value={form.horario_almoco_inicio} onChange={(e) => setForm({...form, horario_almoco_inicio: e.target.value})} className="input-field" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-dark-200 mb-1">Intervalo Almoço — Fim</label>
+              <input type="time" value={form.horario_almoco_fim} onChange={(e) => setForm({...form, horario_almoco_fim: e.target.value})} className="input-field" />
+            </div>
+          </div>
+          <div className="mt-4 pt-4 border-t border-dark-700">
+            <label className="flex items-center gap-3 cursor-pointer mb-4">
+              <input type="checkbox" checked={form.funciona_sabado} onChange={(e) => setForm({...form, funciona_sabado: e.target.checked})} className="rounded w-5 h-5" />
+              <span className="text-sm font-medium text-dark-200">Funciona aos Sábados</span>
+            </label>
+            {form.funciona_sabado && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-dark-200 mb-1">Abertura (Sábado)</label>
+                  <input type="time" value={form.horario_sabado_abertura} onChange={(e) => setForm({...form, horario_sabado_abertura: e.target.value})} className="input-field" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-dark-200 mb-1">Fechamento (Sábado)</label>
+                  <input type="time" value={form.horario_sabado_fechamento} onChange={(e) => setForm({...form, horario_sabado_fechamento: e.target.value})} className="input-field" />
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
