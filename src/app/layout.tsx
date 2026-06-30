@@ -21,7 +21,7 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         <link rel="manifest" href="/manifest.json" />
-        <link rel="apple-touch-icon" href="/IC.png" />
+        <link rel="apple-touch-icon" href="/force-trainning-logo.jpeg" />
       </head>
       <body className="bg-black min-h-screen">{children}</body>
     </html>

@@ -1,21 +1,21 @@
 {
-  "name": "MyGym - Sistema de Gestão",
-  "short_name": "MyGym",
-  "description": "Sistema completo para controle de academias",
+  "name": "Force Trainning",
+  "short_name": "Force",
+  "description": "Academia Force Trainning - Sistema de Gestão",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#000000",
-  "theme_color": "#16a34a",
+  "theme_color": "#7c3aed",
   "icons": [
     {
-      "src": "/IC.png",
+      "src": "/force-trainning-logo.jpeg",
       "sizes": "192x192",
-      "type": "image/png"
+      "type": "image/jpeg"
     },
     {
-      "src": "/IC.png",
+      "src": "/force-trainning-logo.jpeg",
       "sizes": "512x512",
-      "type": "image/png"
+      "type": "image/jpeg"
     }
   ]
 }
