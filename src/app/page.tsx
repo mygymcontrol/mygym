@@ -120,25 +120,9 @@ export default function LoginPage() {
 
         {/* Form */}
         <div className="bg-black rounded-2xl shadow-xl border border-dark-700 p-8 w-full">
-          <h2 className="text-xl font-semibold text-dark-100 mb-6">
-            {isSignUp ? 'Criar Conta (Proprietário)' : 'Entrar'}
-          </h2>
+          <h2 className="text-xl font-semibold text-dark-100 mb-6">Entrar</h2>
 
-          <form onSubmit={isSignUp ? handleSignUp : handleLogin} className="space-y-4">
-            {isSignUp && (
-              <div>
-                <label className="block text-sm font-medium text-dark-200 mb-1">Nome</label>
-                <input
-                  type="text"
-                  value={nome}
-                  onChange={(e) => setNome(e.target.value)}
-                  className="input-field"
-                  placeholder="Seu nome completo"
-                  required
-                />
-              </div>
-            )}
-
+          <form onSubmit={handleLogin} className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-dark-200 mb-1">E-mail</label>
               <input
@@ -171,24 +155,13 @@ export default function LoginPage() {
             )}
 
             <button type="submit" disabled={loading} className="btn-primary w-full py-3">
-              {loading ? 'Carregando...' : isSignUp ? 'Criar Conta' : 'Entrar'}
+              {loading ? 'Carregando...' : 'Entrar'}
             </button>
           </form>
 
-          <div className="mt-6 text-center">
-            <button
-              onClick={() => { setIsSignUp(!isSignUp); setError(''); }}
-              className="text-sm text-primary-600 hover:text-primary-700 font-medium"
-            >
-              {isSignUp ? 'Já tem conta? Faça login' : 'Primeiro acesso? Crie sua conta de proprietário'}
-            </button>
-          </div>
-
-          {!isSignUp && (
-            <p className="text-xs text-dark-400 text-center mt-4">
-              Alunos: use o e-mail e senha fornecidos pela academia.
-            </p>
-          )}
+          <p className="text-xs text-dark-400 text-center mt-4">
+            Alunos: use o e-mail e senha fornecidos pela academia.
+          </p>
         </div>
       </div>
 
