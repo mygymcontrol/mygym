@@ -8,6 +8,7 @@ interface SidebarProps {
   activeMenu: string;
 }
 
+// Menu items v2 - com Mural
 const menuItems = [
   { id: 'dashboard', label: 'Dashboard', icon: '/icons/dashboard.jpg', href: '/dashboard/' },
   { id: 'alunos', label: 'Alunos', icon: '/icons/alunos.jpg', href: '/dashboard/alunos/' },
