@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
-import { getHoje } from '@/lib/utils';
+import { getHoje, formatMoney } from '@/lib/utils';
 import { renovarMensalidades } from '@/lib/renovar-mensalidades';
 import DashboardLayout from '@/components/DashboardLayout';
 
@@ -111,7 +111,7 @@ export default function DashboardPage() {
     { label: 'Total de Alunos', value: stats.totalAlunos, icon: '/icons/alunos.jpg', color: 'bg-dark-700' },
     { label: 'Alunos Ativos', value: stats.alunosAtivos, icon: '/icons/alunos-ativos.jpg', color: 'bg-dark-700' },
     { label: 'Inadimplentes', value: stats.inadimplentes, icon: '/icons/inadimplentes.jpg', color: 'bg-dark-700' },
-    { label: 'Receita do Mês', value: `R$ ${stats.receitaMes.toFixed(2)}`, icon: '/icons/mensalidades.jpg', color: 'bg-dark-700' },
+    { label: 'Receita do Mês', value: formatMoney(stats.receitaMes), icon: '/icons/mensalidades.jpg', color: 'bg-dark-700' },
     { label: 'Check-ins Hoje', value: stats.checkinsHoje, icon: '/icons/qrcode.png', color: 'bg-dark-700' },
     { label: 'Mensalidades Pendentes', value: stats.mensalidadesPendentes, icon: '/icons/mensalidades-pendentes.jpg', color: 'bg-dark-700' },
   ];

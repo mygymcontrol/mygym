@@ -23,3 +23,13 @@ export function getMesAtual(): string {
   const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }));
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
 }
+
+/**
+ * Formata valor monetário no padrão brasileiro: R$ 14.500,00
+ */
+export function formatMoney(valor: number | string | null | undefined): string {
+  if (valor === null || valor === undefined || valor === '') return 'R$ 0,00';
+  const num = typeof valor === 'string' ? parseFloat(valor) : valor;
+  if (isNaN(num)) return 'R$ 0,00';
+  return num.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+}

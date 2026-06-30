@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
-import { getHoje } from '@/lib/utils';
+import { getHoje, formatMoney } from '@/lib/utils';
 import DashboardLayout from '@/components/DashboardLayout';
 
 type ReportType = 'alunos' | 'financeiro' | 'inadimplentes' | 'checkins' | 'mensalidades' | 'professores';
@@ -79,7 +79,7 @@ export default function RelatoriosPage() {
             CPF: a.cpf || '—',
             Status: a.status,
             Convênio: (a as any).convenios?.nome || '—',
-            Mensalidade: mensalidadesMap[a.id] ? `R$ ${mensalidadesMap[a.id].toFixed(2)}` : '—',
+            Mensalidade: mensalidadesMap[a.id] ? formatMoney(mensalidadesMap[a.id]) : '—',
             'Cadastrado em': (() => { const d = (a.created_at || "").split("T")[0].split("-"); return d.length === 3 ? `${d[2]}/${d[1]}/${d[0]}` : "—"; })(),
           })) || []);
           break;
@@ -95,7 +95,7 @@ export default function RelatoriosPage() {
             .order('data_pagamento', { ascending: false });
           setData(pagamentos?.map(p => ({
             Aluno: (p as any).alunos?.nome,
-            Valor: `R$ ${Number(p.valor).toFixed(2)}`,
+            Valor: formatMoney(p.valor),
             'Data Pagamento': p.data_pagamento ? (() => { const d = (p.data_pagamento || "").split("T")[0].split("-"); return d.length === 3 ? `${d[2]}/${d[1]}/${d[0]}` : "—"; })() : '—',
             'Forma': p.forma_pagamento || '—',
           })) || []);
@@ -113,7 +113,7 @@ export default function RelatoriosPage() {
             Aluno: (m as any).alunos?.nome,
             Telefone: (m as any).alunos?.telefone,
             'E-mail': (m as any).alunos?.email,
-            Valor: `R$ ${Number(m.valor).toFixed(2)}`,
+            Valor: formatMoney(m.valor),
             Vencimento: (() => { const d = (m.data_vencimento || "").split("T")[0].split("-"); return d.length === 3 ? `${d[2]}/${d[1]}/${d[0]}` : "—"; })(),
             'Dias em atraso': Math.floor((Date.now() - new Date(m.data_vencimento).getTime()) / 86400000),
           })) || []);
@@ -150,7 +150,7 @@ export default function RelatoriosPage() {
           const { data: mens } = await mensQuery;
           setData(mens?.map(m => ({
             Aluno: (m as any).alunos?.nome,
-            Valor: `R$ ${Number(m.valor).toFixed(2)}`,
+            Valor: formatMoney(m.valor),
             Vencimento: (() => { const d = (m.data_vencimento || "").split("T")[0].split("-"); return d.length === 3 ? `${d[2]}/${d[1]}/${d[0]}` : "—"; })(),
             'Pagamento': m.data_pagamento ? (() => { const d = (m.data_pagamento || "").split("T")[0].split("-"); return d.length === 3 ? `${d[2]}/${d[1]}/${d[0]}` : "—"; })() : '—',
             Status: m.status,
@@ -189,8 +189,8 @@ export default function RelatoriosPage() {
               Data: `${dia}/${mes}/${ano}`,
               Aula: aulaNome,
               Horas: `${c.horas_confirmadas}h`,
-              'Valor/Aula': `R$ ${vlMedio.toFixed(2)}`,
-              'Valor': `R$ ${(Number(c.horas_confirmadas) * vlMedio).toFixed(2)}`,
+              'Valor/Aula': formatMoney(vlMedio),
+              'Valor': formatMoney(Number(c.horas_confirmadas) * vlMedio),
             });
           });
           setData(rows);
@@ -225,8 +225,9 @@ export default function RelatoriosPage() {
   };
 
   // Calcular totais para relatório financeiro
+  const parseMoney = (s: string) => parseFloat((s || '0').replace('R$', '').replace(/\./g, '').replace(',', '.').trim()) || 0;
   const totalReceita = reportType === 'financeiro'
-    ? data.reduce((sum, row) => sum + parseFloat(row.Valor?.replace('R$ ', '').replace(',', '.') || '0'), 0)
+    ? data.reduce((sum, row) => sum + parseMoney(row.Valor), 0)
     : 0;
 
   return (
@@ -309,14 +310,14 @@ export default function RelatoriosPage() {
               {reportType === 'financeiro' && (
                 <div className="card flex-1">
                   <p className="text-sm text-dark-400">Total Recebido</p>
-                  <p className="text-2xl font-bold text-primary-600">R$ {totalReceita.toFixed(2)}</p>
+                  <p className="text-2xl font-bold text-primary-600">{formatMoney(totalReceita)}</p>
                 </div>
               )}
               {reportType === 'inadimplentes' && (
                 <div className="card flex-1">
                   <p className="text-sm text-dark-400">Total em Atraso</p>
                   <p className="text-2xl font-bold text-red-600">
-                    R$ {data.reduce((sum, row) => sum + parseFloat(row.Valor?.replace('R$ ', '') || '0'), 0).toFixed(2)}
+                    {formatMoney(data.reduce((sum, row) => sum + parseMoney(row.Valor), 0))}
                   </p>
                 </div>
               )}
