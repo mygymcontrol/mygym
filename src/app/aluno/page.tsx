@@ -420,15 +420,28 @@ export default function PortalAlunoPage() {
           </div>
         )}
 
-        {/* Check-in via QR */}
+        {/* Check-in */}
         <div className="card">
           <h2 className="text-lg font-semibold text-dark-100 mb-4">📱 Check-in</h2>
           {!showQrScanner ? (
-            <div className="text-center py-4">
-              <p className="text-dark-400 text-sm mb-4">Aponte a câmera para o QR Code da academia para registrar presença.</p>
-              <button onClick={() => setShowQrScanner(true)} className="btn-primary px-8 py-3">
-                📷 Fazer Check-in
+            <div className="text-center py-4 space-y-4">
+              <p className="text-dark-400 text-sm">Registre sua presença na academia.</p>
+              
+              {/* Botão simples de check-in */}
+              <button onClick={registrarCheckin} className="btn-primary w-full py-4 text-lg font-bold">
+                ✅ Fazer Check-in
               </button>
+
+              <div className="relative">
+                <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-dark-600"></div></div>
+                <div className="relative flex justify-center"><span className="bg-dark-800 px-3 text-xs text-dark-400">ou</span></div>
+              </div>
+
+              {/* Opção QR Code */}
+              <button onClick={() => setShowQrScanner(true)} className="btn-secondary w-full py-3">
+                📷 Check-in por QR Code
+              </button>
+
               {checkinMsg && (
                 <div className={`mt-4 p-3 rounded-lg ${checkinMsg.includes('✅') ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
                   {checkinMsg}
