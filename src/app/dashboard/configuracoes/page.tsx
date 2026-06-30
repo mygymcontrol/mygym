@@ -68,10 +68,15 @@ export default function ConfiguracoesPage() {
     e.preventDefault();
     setSaving(true);
 
-    // Converter campos vazios para null
+    // Converter campos vazios para null, manter booleans
     const payload: any = {};
     Object.entries(form).forEach(([key, value]) => {
-      payload[key] = value === '' ? null : value;
+      if (typeof value === 'boolean') {
+        payload[key] = value;
+      } else {
+        payload[key] = value === '' ? null : value;
+      }
+    });
     });
 
     await supabase
