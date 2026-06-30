@@ -327,7 +327,7 @@ export default function RelatoriosPage() {
           {/* Tabela de resultados */}
           {data.length > 0 ? (
             <div className="card overflow-hidden p-0">
-              <div className="overflow-x-auto">
+              <div className="overflow-x-auto max-h-[70vh] overflow-y-auto">
                 <table className="w-full">
                   <thead className="bg-dark-800">
                     <tr>
@@ -337,7 +337,7 @@ export default function RelatoriosPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-dark-100">
-                    {data.slice(0, 100).map((row, i) => (
+                    {data.map((row, i) => (
                       <tr key={i} className="hover:bg-dark-800">
                         {Object.values(row).map((val: any, j) => (
                           <td key={j} className="px-4 py-3 text-sm text-dark-200">{val}</td>
@@ -347,11 +347,6 @@ export default function RelatoriosPage() {
                   </tbody>
                 </table>
               </div>
-              {data.length > 100 && (
-                <div className="p-4 text-center text-sm text-dark-400">
-                  Mostrando 100 de {data.length} registros. Exporte para ver todos.
-                </div>
-              )}
             </div>
           ) : !loading ? (
             <div className="card text-center py-12">
