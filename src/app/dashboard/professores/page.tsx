@@ -249,8 +249,8 @@ export default function ProfessoresPage() {
           <div className="bg-dark-800 rounded-2xl w-full max-w-sm">
             <div className="p-6 border-b border-dark-700"><h2 className="text-lg font-semibold text-dark-100">Definir Valor/Aula</h2></div>
             <form onSubmit={handleAddValor} className="p-6 space-y-4">
-              <div><label className="block text-sm font-medium text-dark-200 mb-1">Modalidade</label><select value={valorForm.modalidade_id} onChange={(e) => setValorForm({...valorForm, modalidade_id: e.target.value})} className="input-field" required><option value="">Selecione</option>{modalidades.filter(m => m.professor_id_ref === valorProfId).map(m => <option key={m.id} value={m.id}>{m.nome}</option>)}</select></div>
-              <div><label className="block text-sm font-medium text-dark-200 mb-1">Valor por Aula (R$)</label><input type="number" step="0.01" value={valorForm.valor_aula} onChange={(e) => setValorForm({...valorForm, valor_aula: e.target.value})} className="input-field" required /></div>
+              <div><label className="block text-sm font-medium text-dark-200 mb-1">Modalidade</label><select value={valorForm.modalidade_id} onChange={(e) => setValorForm({...valorForm, modalidade_id: e.target.value})} className="input-field" required><option value="">Selecione</option>{modalidades.map(m => <option key={m.id} value={m.id}>{m.nome}</option>)}</select></div>
+              <div><label className="block text-sm font-medium text-dark-200 mb-1">Valor por Aula (R$)</label><input type="number" step="0.01" min="0" value={valorForm.valor_aula} onChange={(e) => setValorForm({...valorForm, valor_aula: e.target.value})} className="input-field" required placeholder="0.00" /></div>
               <div className="flex justify-end gap-3 pt-4"><button type="button" onClick={() => setShowValorModal(false)} className="btn-secondary">Cancelar</button><button type="submit" className="btn-primary">Salvar</button></div>
             </form>
           </div>
