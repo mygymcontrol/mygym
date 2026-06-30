@@ -54,14 +54,14 @@ export default function DashboardPage() {
       const alunosInadimplentes = new Set(mensAtrasadas?.map(m => m.aluno_id) || []);
       const inadimplentes = alunosInadimplentes.size;
 
-      // Receita do mês (mensalidades pagas no mês atual)
-      const inicioMes = new Date();
-      inicioMes.setDate(1);
+      // Receita do mês (mensalidades pagas no mês atual - fuso São Paulo)
+      const spNow = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }));
+      const inicioMes = `${spNow.getFullYear()}-${String(spNow.getMonth() + 1).padStart(2, '0')}-01`;
       const { data: pagamentos } = await supabase
         .from('mensalidades')
         .select('valor')
         .eq('status', 'pago')
-        .gte('data_pagamento', inicioMes.toISOString().split('T')[0]);
+        .gte('data_pagamento', inicioMes);
 
       const receitaMes = pagamentos?.reduce((sum, p) => sum + Number(p.valor), 0) || 0;
 
