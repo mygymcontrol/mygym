@@ -7,6 +7,7 @@ const IMGUR_CLIENT_ID = '546c25a59c58ad7';
 
 interface Post {
   id: string;
+  autor_id: string;
   autor_nome: string;
   autor_role: string;
   texto: string | null;
