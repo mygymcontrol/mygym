@@ -56,12 +56,17 @@ export default function DashboardPage() {
 
       // Receita do mês (mensalidades pagas no mês atual - fuso São Paulo)
       const spNow = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }));
-      const inicioMes = `${spNow.getFullYear()}-${String(spNow.getMonth() + 1).padStart(2, '0')}-01`;
+      const mesAtual = spNow.getMonth() + 1;
+      const anoAtual = spNow.getFullYear();
+      const inicioMes = `${anoAtual}-${String(mesAtual).padStart(2, '0')}-01`;
+      const ultimoDia = new Date(anoAtual, mesAtual, 0).getDate();
+      const fimMes = `${anoAtual}-${String(mesAtual).padStart(2, '0')}-${ultimoDia}`;
       const { data: pagamentos } = await supabase
         .from('mensalidades')
         .select('valor')
         .eq('status', 'pago')
-        .gte('data_pagamento', inicioMes);
+        .gte('data_pagamento', inicioMes)
+        .lte('data_pagamento', fimMes);
 
       const receitaMes = pagamentos?.reduce((sum, p) => sum + Number(p.valor), 0) || 0;
 
