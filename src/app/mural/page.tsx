@@ -34,10 +34,16 @@ export default function MuralPage() {
     setUser(user);
 
     const { data: prof } = await supabase.from('profiles').select('nome, role, academia_id').eq('id', user.id).single();
-    if (!prof || !prof.academia_id) { window.location.href = '/'; return; }
+    if (!prof) { window.location.href = '/'; return; }
+    
     setProfile(prof);
-    setAcademiaId(prof.academia_id);
-    loadPosts(prof.academia_id);
+    
+    // Pegar academia_id do profile ou do localStorage
+    const acadId = prof.academia_id || localStorage.getItem('academia_id');
+    if (!acadId) { window.location.href = '/'; return; }
+    
+    setAcademiaId(acadId);
+    loadPosts(acadId);
   };
 
   const loadPosts = async (acadId: string) => {
