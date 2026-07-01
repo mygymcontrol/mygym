@@ -78,8 +78,6 @@ export default function DashboardPage() {
         .eq('data', hoje);
 
       // Mensalidades pendentes = atrasadas + pendentes do mês atual
-      const mesAtual = new Date().getMonth() + 1;
-      const anoAtual = new Date().getFullYear();
       const inicioMesStr = `${anoAtual}-${String(mesAtual).padStart(2, '0')}-01`;
       const fimMesStr = `${anoAtual}-${String(mesAtual).padStart(2, '0')}-31`;
 
