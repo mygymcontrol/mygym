@@ -17,6 +17,7 @@ export default function RelatoriosPage() {
   });
   const [filtroProf, setFiltroProf] = useState('');
   const [filtroAluno, setFiltroAluno] = useState('');
+  const [filtroSemPlano, setFiltroSemPlano] = useState(false);
   const [listaProfessores, setListaProfessores] = useState<any[]>([]);
   const [listaAlunos, setListaAlunos] = useState<any[]>([]);
 
@@ -72,7 +73,9 @@ export default function RelatoriosPage() {
             }
           }
 
-          setData(alunos?.map(a => ({
+          setData((alunos || [])
+            .filter(a => !filtroSemPlano || !mensalidadesMap[a.id])
+            .map(a => ({
             Nome: a.nome,
             'E-mail': a.email,
             Telefone: a.telefone,
@@ -81,7 +84,7 @@ export default function RelatoriosPage() {
             Convênio: (a as any).convenios?.nome || '—',
             Mensalidade: mensalidadesMap[a.id] ? formatMoney(mensalidadesMap[a.id]) : '—',
             'Cadastrado em': (() => { const d = (a.created_at || "").split("T")[0].split("-"); return d.length === 3 ? `${d[2]}/${d[1]}/${d[0]}` : "—"; })(),
-          })) || []);
+          })));
           break;
         }
 
@@ -259,6 +262,12 @@ export default function RelatoriosPage() {
           {/* Filtros */}
           <div className="card">
             <div className="flex flex-wrap items-end gap-4">
+              {reportType === 'alunos' && (
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input type="checkbox" checked={filtroSemPlano} onChange={(e) => setFiltroSemPlano(e.target.checked)} className="rounded" />
+                  <span className="text-sm text-dark-200">Apenas sem plano</span>
+                </label>
+              )}
               {reportType !== 'alunos' && (
                 <>
                   <div>

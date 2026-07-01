@@ -13,6 +13,7 @@ interface DashboardStats {
   receitaMes: number;
   checkinsHoje: number;
   mensalidadesPendentes: number;
+  semPlano: number;
 }
 
 export default function DashboardPage() {
@@ -23,6 +24,7 @@ export default function DashboardPage() {
     receitaMes: 0,
     checkinsHoje: 0,
     mensalidadesPendentes: 0,
+    semPlano: 0,
   });
   const [loading, setLoading] = useState(true);
 
@@ -95,6 +97,12 @@ export default function DashboardPage() {
 
       const mensalidadesPendentes = (atrasadas || 0) + (pendentesMesAtual || 0);
 
+      // Alunos sem plano (sem modalidades vinculadas)
+      const { data: alunosComMod } = await supabase.from('aluno_modalidades').select('aluno_id').eq('status', 'ativa');
+      const alunosComModSet = new Set((alunosComMod || []).map(m => m.aluno_id));
+      const { data: todosAtivos } = await supabase.from('alunos').select('id').eq('status', 'ativo');
+      const semPlano = (todosAtivos || []).filter(a => !alunosComModSet.has(a.id)).length;
+
       setStats({
         totalAlunos: totalAlunos || 0,
         alunosAtivos: alunosAtivos || 0,
@@ -102,6 +110,7 @@ export default function DashboardPage() {
         receitaMes,
         checkinsHoje: checkinsHoje || 0,
         mensalidadesPendentes,
+        semPlano,
       });
     } catch (error) {
       console.error('Erro ao carregar estatísticas:', error);
@@ -117,6 +126,7 @@ export default function DashboardPage() {
     { label: 'Receita do Mês', value: formatMoney(stats.receitaMes), icon: '/icons/mensalidades.jpg', color: 'bg-dark-700' },
     { label: 'Check-ins Hoje', value: stats.checkinsHoje, icon: '/icons/qrcode.png', color: 'bg-dark-700' },
     { label: 'Mensalidades Pendentes', value: stats.mensalidadesPendentes, icon: '/icons/mensalidades-pendentes.jpg', color: 'bg-dark-700' },
+    { label: 'Sem Plano', value: stats.semPlano, icon: '/icons/inadimplentes.jpg', color: stats.semPlano > 0 ? 'bg-yellow-900/20 border border-yellow-700' : 'bg-dark-700' },
   ];
 
   return (
