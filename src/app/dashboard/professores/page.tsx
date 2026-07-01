@@ -51,13 +51,11 @@ export default function ProfessoresPage() {
     return (totalMin / 60).toFixed(1);
   };
 
-  const getValorSemanal = (profId: string) => {
+  const getValorMensal = (profId: string) => {
     const valores = profModValores.filter(v => v.professor_id === profId);
     let total = 0;
     valores.forEach(v => {
-      // Contar quantas aulas por semana nessa modalidade
-      const aulasSemanais = horarios.filter(h => h.modalidade_id === v.modalidade_id).length;
-      total += Number(v.valor_aula) * aulasSemanais;
+      total += Number(v.valor_aula);
     });
     return total;
   };
@@ -142,10 +140,9 @@ export default function ProfessoresPage() {
     const { data: checkins } = await supabase.from('checkins_professores').select('id').eq('professor_id', pagProf.id).gte('data', inicioMes).lte('data', fimMes);
     const aulas = checkins?.length || 0;
 
-    // Buscar valor por aula
+    // Buscar valor mensal
     const valores = profModValores.filter((v: any) => v.professor_id === pagProf.id);
-    const vlMedio = valores.length > 0 ? valores.reduce((s: number, v: any) => s + Number(v.valor_aula), 0) / valores.length : 0;
-    const valorTotal = aulas * vlMedio;
+    const valorTotal = valores.reduce((s: number, v: any) => s + Number(v.valor_aula), 0);
 
     // Inserir ou atualizar pagamento
     await supabase.from('pagamentos_professores').upsert({
@@ -188,7 +185,7 @@ export default function ProfessoresPage() {
                 <div className="text-right">
                   <span className={`badge-${prof.status === 'ativo' ? 'ativo' : 'suspenso'}`}>{prof.status}</span>
                   <p className="text-sm text-primary-400 mt-1 font-medium">{horas}h/semana</p>
-                  <p className="text-sm text-green-400 font-medium">R$ {getValorSemanal(prof.id).toFixed(2)}/sem</p>
+                  <p className="text-sm text-green-400 font-medium">R$ {getValorMensal(prof.id).toFixed(2)}/mês</p>
                 </div>
               </div>
 
@@ -201,8 +198,8 @@ export default function ProfessoresPage() {
                       <div key={v.id} className="flex items-center justify-between text-xs bg-dark-700 px-3 py-1.5 rounded">
                         <span className="text-dark-200">{modNome}</span>
                         <div className="flex items-center gap-2">
-                          <span className="text-green-400 font-medium">R$ {Number(v.valor_aula).toFixed(2)}/aula</span>
-                          <button onClick={() => { const novoValor = prompt(`Novo valor por aula para ${modNome}:`, String(v.valor_aula)); if (novoValor && !isNaN(Number(novoValor))) { supabase.from('professor_modalidade_valor').update({ valor_aula: parseFloat(novoValor) }).eq('id', v.id).then(() => loadData()); } }} className="text-primary-400">✎</button>
+                          <span className="text-green-400 font-medium">R$ {Number(v.valor_aula).toFixed(2)}/mês</span>
+                          <button onClick={() => { const novoValor = prompt(`Novo valor mensal para ${modNome}:`, String(v.valor_aula)); if (novoValor && !isNaN(Number(novoValor))) { supabase.from('professor_modalidade_valor').update({ valor_aula: parseFloat(novoValor) }).eq('id', v.id).then(() => loadData()); } }} className="text-primary-400">✎</button>
                           <button onClick={() => handleDeleteValor(v.id)} className="text-red-400">✕</button>
                         </div>
                       </div>
@@ -213,7 +210,7 @@ export default function ProfessoresPage() {
 
               <div className="flex flex-wrap gap-2 mt-3 pt-3 border-t border-dark-700">
                 <button onClick={() => handleEdit(prof)} className="px-3 py-1.5 bg-blue-900/30 text-blue-400 border border-blue-800 rounded-lg text-sm font-medium hover:bg-blue-900/50 transition-colors">✏️ Editar</button>
-                <button onClick={() => { setValorProfId(prof.id); setValorForm({ modalidade_id: '', valor_aula: '' }); setShowValorModal(true); }} className="px-3 py-1.5 bg-green-900/30 text-green-400 border border-green-800 rounded-lg text-sm font-medium hover:bg-green-900/50 transition-colors">+ Valor/Aula</button>
+                <button onClick={() => { setValorProfId(prof.id); setValorForm({ modalidade_id: '', valor_aula: '' }); setShowValorModal(true); }} className="px-3 py-1.5 bg-green-900/30 text-green-400 border border-green-800 rounded-lg text-sm font-medium hover:bg-green-900/50 transition-colors">+ Valor Mensal</button>
                 <button onClick={() => handlePagarProfessor(prof)} className="px-3 py-1.5 bg-yellow-900/30 text-yellow-400 border border-yellow-800 rounded-lg text-sm font-medium hover:bg-yellow-900/50 transition-colors">💰 Pagar</button>
                 <button onClick={() => handleDelete(prof.id)} className="px-3 py-1.5 bg-red-900/30 text-red-400 border border-red-800 rounded-lg text-sm font-medium hover:bg-red-900/50 transition-colors">🗑 Excluir</button>
               </div>
@@ -247,10 +244,10 @@ export default function ProfessoresPage() {
       {showValorModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-dark-800 rounded-2xl w-full max-w-sm">
-            <div className="p-6 border-b border-dark-700"><h2 className="text-lg font-semibold text-dark-100">Definir Valor/Aula</h2></div>
+            <div className="p-6 border-b border-dark-700"><h2 className="text-lg font-semibold text-dark-100">Definir Valor Mensal</h2></div>
             <form onSubmit={handleAddValor} className="p-6 space-y-4">
               <div><label className="block text-sm font-medium text-dark-200 mb-1">Modalidade</label><select value={valorForm.modalidade_id} onChange={(e) => setValorForm({...valorForm, modalidade_id: e.target.value})} className="input-field" required><option value="">Selecione</option>{modalidades.map(m => <option key={m.id} value={m.id}>{m.nome}</option>)}</select></div>
-              <div><label className="block text-sm font-medium text-dark-200 mb-1">Valor por Aula (R$)</label><input type="number" step="0.01" min="0" value={valorForm.valor_aula} onChange={(e) => setValorForm({...valorForm, valor_aula: e.target.value})} className="input-field" required placeholder="0.00" /></div>
+              <div><label className="block text-sm font-medium text-dark-200 mb-1">Valor Mensal (R$)</label><input type="number" step="0.01" min="0" value={valorForm.valor_aula} onChange={(e) => setValorForm({...valorForm, valor_aula: e.target.value})} className="input-field" required placeholder="0.00" /></div>
               <div className="flex justify-end gap-3 pt-4"><button type="button" onClick={() => setShowValorModal(false)} className="btn-secondary">Cancelar</button><button type="submit" className="btn-primary">Salvar</button></div>
             </form>
           </div>
