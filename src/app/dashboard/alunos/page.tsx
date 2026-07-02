@@ -36,6 +36,7 @@ export default function AlunosPage() {
   const [logMatricula, setLogMatricula] = useState<any[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('todos');
+  const [filterPlano, setFilterPlano] = useState('todos');
   const [selectedMods, setSelectedMods] = useState<string[]>([]);
 
   const [form, setForm] = useState({
@@ -289,7 +290,9 @@ export default function AlunosPage() {
   const filteredAlunos = alunos.filter((a) => {
     const matchSearch = a.nome.toLowerCase().includes(searchTerm.toLowerCase()) || a.email.toLowerCase().includes(searchTerm.toLowerCase()) || a.telefone.includes(searchTerm);
     const matchStatus = filterStatus === 'todos' || a.status === filterStatus;
-    return matchSearch && matchStatus;
+    const mods = a.aluno_modalidades?.filter((am: any) => am.status === 'ativa') || [];
+    const matchPlano = filterPlano === 'todos' || (filterPlano === 'com' && mods.length > 0) || (filterPlano === 'sem' && mods.length === 0);
+    return matchSearch && matchStatus && matchPlano;
   });
 
   const getAlunoMods = (aluno: AlunoFull) => aluno.aluno_modalidades?.filter(am => am.status === 'ativa') || [];
@@ -300,13 +303,24 @@ export default function AlunosPage() {
     <DashboardLayout activeMenu="alunos" title="Gestão de Alunos">
       <div className="flex flex-col sm:flex-row gap-4 mb-6">
         <input type="text" placeholder="Buscar..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="input-field flex-1" />
-        <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} className="input-field w-full sm:w-48">
-          <option value="todos">Todos</option>
-          <option value="ativo">Ativos</option>
-          <option value="inadimplente">Inadimplentes</option>
-          <option value="suspenso">Suspensos</option>
-          <option value="cancelado">Cancelados</option>
-        </select>
+        <div>
+          <label className="block text-xs text-dark-400 mb-1">Plano</label>
+          <select value={filterPlano} onChange={(e) => setFilterPlano(e.target.value)} className="input-field w-full sm:w-40">
+            <option value="todos">Todos</option>
+            <option value="com">Com Plano</option>
+            <option value="sem">Sem Plano</option>
+          </select>
+        </div>
+        <div>
+          <label className="block text-xs text-dark-400 mb-1">Status</label>
+          <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} className="input-field w-full sm:w-40">
+            <option value="todos">Todos</option>
+            <option value="ativo">Ativos</option>
+            <option value="inadimplente">Inadimplentes</option>
+            <option value="suspenso">Suspensos</option>
+            <option value="cancelado">Cancelados</option>
+          </select>
+        </div>
         <button onClick={handleNew} className="btn-primary whitespace-nowrap">+ Novo Aluno</button>
       </div>
 

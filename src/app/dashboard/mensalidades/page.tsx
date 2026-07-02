@@ -169,18 +169,24 @@ export default function MensalidadesPage() {
       {/* Filtros */}
       <div className="flex flex-col sm:flex-row gap-4 mb-6">
         <input type="text" placeholder="Buscar aluno..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="input-field flex-1" />
-        <select value={filterConvenio} onChange={(e) => setFilterConvenio(e.target.value)} className="input-field w-full sm:w-48">
-          <option value="todos">Todos</option>
-          <option value="com">Com Convênio</option>
-          <option value="sem">Sem Convênio</option>
-        </select>
-        <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} className="input-field w-full sm:w-48">
-          <option value="todos">Todos</option>
-          <option value="pendente">A vencer</option>
-          <option value="atrasado">Atrasadas</option>
-          <option value="pago">Pagas</option>
-          <option value="cancelado">Canceladas</option>
-        </select>
+        <div>
+          <label className="block text-xs text-dark-400 mb-1">Convênio</label>
+          <select value={filterConvenio} onChange={(e) => setFilterConvenio(e.target.value)} className="input-field w-full sm:w-40">
+            <option value="todos">Todos</option>
+            <option value="com">Com Convênio</option>
+            <option value="sem">Sem Convênio</option>
+          </select>
+        </div>
+        <div>
+          <label className="block text-xs text-dark-400 mb-1">Status</label>
+          <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} className="input-field w-full sm:w-40">
+            <option value="todos">Todos</option>
+            <option value="pendente">A vencer</option>
+            <option value="atrasado">Atrasadas</option>
+            <option value="pago">Pagas</option>
+            <option value="cancelado">Canceladas</option>
+          </select>
+        </div>
         <div className="flex gap-2 ml-auto">
           <button onClick={() => setShowConfigMsg(true)} className="btn-secondary"><img src="/icons/configuracoes.jpg" alt="" className="w-4 h-4 inline rounded" /> Mensagem</button>
           <button onClick={() => { if (selectedIds.length === 0) { alert('Selecione pelo menos um aluno.'); return; } enviarParaSelecionados(); }} className="btn-primary bg-green-600 hover:bg-green-700">
