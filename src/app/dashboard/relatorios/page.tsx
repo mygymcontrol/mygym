@@ -272,9 +272,19 @@ export default function RelatoriosPage() {
           <div className="card">
             <div className="flex flex-wrap items-end gap-4">
               {(reportType === 'alunos' || reportType === 'mensalidades') && (
-                <div>
+                <div className="relative">
                   <label className="block text-sm font-medium text-dark-200 mb-1">Buscar Aluno</label>
                   <input type="text" value={filtroNome} onChange={(e) => setFiltroNome(e.target.value)} className="input-field" placeholder="Digite o nome..." />
+                  {filtroNome.length >= 2 && (
+                    <div className="absolute z-20 w-full mt-1 bg-dark-800 border border-dark-600 rounded-xl max-h-48 overflow-y-auto shadow-lg">
+                      {listaAlunos.filter(a => a.nome.toLowerCase().includes(filtroNome.toLowerCase())).slice(0, 8).map(a => (
+                        <button key={a.id} onClick={() => setFiltroNome(a.nome)} className="w-full text-left px-4 py-2 text-sm text-dark-200 hover:bg-dark-700 border-b border-dark-700 last:border-b-0">{a.nome}</button>
+                      ))}
+                      {listaAlunos.filter(a => a.nome.toLowerCase().includes(filtroNome.toLowerCase())).length === 0 && (
+                        <div className="px-4 py-2 text-sm text-dark-400">Nenhum aluno encontrado</div>
+                      )}
+                    </div>
+                  )}
                 </div>
               )}
               {(reportType === 'alunos' || reportType === 'mensalidades') && (
