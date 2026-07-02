@@ -237,12 +237,6 @@ export default function PortalAlunoPage() {
   const [comprovantesEnviados, setComprovantesEnviados] = useState<string[]>([]);
 
   const enviarComprovante = (m: MensalidadeAluno) => {
-    // Bloquear envio duplicado
-    if (comprovantesEnviados.includes(m.id)) {
-      alert('Comprovante já enviado para esta mensalidade. Aguarde a confirmação da academia.');
-      return;
-    }
-
     const whatsAcademia = config.whatsapp_academia?.replace(/\D/g, '') || '';
     if (!whatsAcademia) { alert('A academia ainda não configurou o WhatsApp.'); return; }
 
@@ -251,7 +245,7 @@ export default function PortalAlunoPage() {
     const meses = ['', 'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
     const mesRef = `${meses[parseInt(mes)]}/${ano}`;
 
-    const msg = `Olá! Sou ${aluno?.nome}, segue comprovante de pagamento.\n\nReferência: ${mesRef}\nVencimento: ${formatDate(m.data_vencimento)}\nValor: R$ ${Number(m.valor).toFixed(2)}\n\n(anexar comprovante)`;
+    const msg = `Olá! Sou *${aluno?.nome}*, segue comprovante de pagamento.\n\n📅 Mês referência: *${mesRef}*\n💰 Valor: R$ ${Number(m.valor).toFixed(2)}\n📆 Vencimento: ${formatDate(m.data_vencimento)}\n\n(anexar comprovante)`;
     window.open(`https://wa.me/${whatsAcademia}?text=${encodeURIComponent(msg)}`, '_blank');
 
     // Marcar como enviado (salvar no localStorage)
@@ -999,13 +993,9 @@ export default function PortalAlunoPage() {
                       {m.status === 'pago' ? '✓ Pago' : m.status === 'atrasado' ? 'Atrasado' : 'A vencer'}
                     </span>
                     {m.status !== 'pago' && (
-                      comprovantesEnviados.includes(m.id) ? (
-                        <span className="px-3 py-1.5 bg-dark-700 text-dark-400 text-xs font-medium rounded-lg">✓ Comprovante enviado</span>
-                      ) : (
                         <button onClick={() => enviarComprovante(m)} className="px-3 py-1.5 bg-green-600 text-white text-xs font-medium rounded-lg hover:bg-green-700 transition-colors">
                           📲 Enviar Comprovante
                         </button>
-                      )
                     )}
                   </div>
                 </div>
