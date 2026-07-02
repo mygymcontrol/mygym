@@ -19,14 +19,14 @@ export default function PreCadastrosPage() {
   };
 
   const getStatusLabel = (status: string) => {
-    if (status === 'importado') return 'cadastrado';
+    if (status === 'aprovado' || status === 'importado') return 'cadastrado';
     return 'pendente';
   };
 
   const filteredPrecadastros = precadastros.filter(p => {
     if (filtroStatus === 'todos') return true;
-    if (filtroStatus === 'pendente') return p.status !== 'importado';
-    if (filtroStatus === 'cadastrado') return p.status === 'importado';
+    if (filtroStatus === 'pendente') return p.status === 'pendente';
+    if (filtroStatus === 'cadastrado') return p.status === 'aprovado' || p.status === 'importado';
     return true;
   });
 
@@ -86,7 +86,7 @@ export default function PreCadastrosPage() {
                 </div>
                 <div className="text-right">
                   <span className="text-xs text-dark-400">{formatDate(p.created_at?.split('T')[0])}</span>
-                  <span className={`ml-2 px-2 py-0.5 rounded-full text-xs ${p.status === 'importado' ? 'bg-green-900/30 text-green-400' : 'bg-yellow-900/30 text-yellow-400'}`}>{getStatusLabel(p.status)}</span>
+                  <span className={`ml-2 px-2 py-0.5 rounded-full text-xs ${(p.status === 'aprovado' || p.status === 'importado') ? 'bg-green-900/30 text-green-400' : 'bg-yellow-900/30 text-yellow-400'}`}>{getStatusLabel(p.status)}</span>
                 </div>
               </div>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mt-3 text-xs text-dark-300">
