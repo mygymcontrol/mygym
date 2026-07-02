@@ -19,6 +19,7 @@ export default function RelatoriosPage() {
   const [filtroAluno, setFiltroAluno] = useState('');
   const [filtroSemPlano, setFiltroSemPlano] = useState(false);
   const [filtroConvenio, setFiltroConvenio] = useState('todos');
+  const [filtroNome, setFiltroNome] = useState('');
   const [listaProfessores, setListaProfessores] = useState<any[]>([]);
   const [listaAlunos, setListaAlunos] = useState<any[]>([]);
 
@@ -77,6 +78,7 @@ export default function RelatoriosPage() {
           setData((alunos || [])
             .filter(a => !filtroSemPlano || !mensalidadesMap[a.id])
             .filter(a => filtroConvenio === 'todos' || (filtroConvenio === 'com' && (a as any).convenios?.nome) || (filtroConvenio === 'sem' && !(a as any).convenios?.nome))
+            .filter(a => !filtroNome || a.nome.toLowerCase().includes(filtroNome.toLowerCase()))
             .map(a => ({
             Nome: a.nome,
             'E-mail': a.email,
@@ -155,6 +157,7 @@ export default function RelatoriosPage() {
           const { data: mens } = await mensQuery;
           setData((mens || [])
             .filter(m => filtroConvenio === 'todos' || (filtroConvenio === 'com' && (m as any).alunos?.convenio_id) || (filtroConvenio === 'sem' && !(m as any).alunos?.convenio_id))
+            .filter(m => !filtroNome || (m as any).alunos?.nome?.toLowerCase().includes(filtroNome.toLowerCase()))
             .map(m => ({
               Aluno: (m as any).alunos?.nome,
               Valor: formatMoney(m.valor),
@@ -268,6 +271,12 @@ export default function RelatoriosPage() {
           {/* Filtros */}
           <div className="card">
             <div className="flex flex-wrap items-end gap-4">
+              {(reportType === 'alunos' || reportType === 'mensalidades') && (
+                <div>
+                  <label className="block text-sm font-medium text-dark-200 mb-1">Buscar Aluno</label>
+                  <input type="text" value={filtroNome} onChange={(e) => setFiltroNome(e.target.value)} className="input-field" placeholder="Digite o nome..." />
+                </div>
+              )}
               {(reportType === 'alunos' || reportType === 'mensalidades') && (
                 <div>
                   <label className="block text-sm font-medium text-dark-200 mb-1">Convênio</label>

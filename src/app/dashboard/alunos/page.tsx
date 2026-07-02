@@ -318,15 +318,16 @@ export default function AlunosPage() {
                 <th className="text-left px-6 py-3 text-xs font-medium text-dark-400 uppercase">Nome</th>
                 <th className="text-left px-6 py-3 text-xs font-medium text-dark-400 uppercase">Modalidades</th>
                 <th className="text-left px-6 py-3 text-xs font-medium text-dark-400 uppercase">Início</th>
+                <th className="text-left px-6 py-3 text-xs font-medium text-dark-400 uppercase">Mensalidade</th>
                 <th className="text-left px-6 py-3 text-xs font-medium text-dark-400 uppercase">Status</th>
                 <th className="text-right px-6 py-3 text-xs font-medium text-dark-400 uppercase">Ações</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-dark-100">
               {loading ? (
-                <tr><td colSpan={5} className="px-6 py-8 text-center text-dark-400">Carregando...</td></tr>
+                <tr><td colSpan={6} className="px-6 py-8 text-center text-dark-400">Carregando...</td></tr>
               ) : filteredAlunos.length === 0 ? (
-                <tr><td colSpan={5} className="px-6 py-8 text-center text-dark-400">Nenhum aluno encontrado</td></tr>
+                <tr><td colSpan={6} className="px-6 py-8 text-center text-dark-400">Nenhum aluno encontrado</td></tr>
               ) : (
                 filteredAlunos.map((aluno) => {
                   const mods = getAlunoMods(aluno);
@@ -349,6 +350,9 @@ export default function AlunosPage() {
                       </td>
                       <td className="px-6 py-4 text-sm text-dark-200">
                         {matAtiva?.data_inicio ? formatDate(matAtiva.data_inicio) : '—'}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-primary-400 font-medium">
+                        {mods.length > 0 ? `R$ ${mods.reduce((sum: number, am: any) => sum + (Number(am.modalidades?.valor) || 0), 0).toFixed(2)}` : '—'}
                       </td>
                       <td className="px-6 py-4"><span className={statusBadge(aluno.status)}>{aluno.status}</span></td>
                       <td className="px-6 py-4 text-right space-x-2" onClick={(e) => e.stopPropagation()}>
