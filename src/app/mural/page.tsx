@@ -15,8 +15,21 @@ interface Post {
   created_at: string;
 }
 
+interface Comentario {
+  id: string;
+  post_id: string;
+  autor_id: string;
+  autor_nome: string;
+  autor_role: string;
+  texto: string;
+  created_at: string;
+}
+
 export default function MuralPage() {
   const [posts, setPosts] = useState<Post[]>([]);
+  const [comentarios, setComentarios] = useState<Record<string, Comentario[]>>({});
+  const [comentarioTexto, setComentarioTexto] = useState<Record<string, string>>({});
+  const [showComentarios, setShowComentarios] = useState<Record<string, boolean>>({});
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<any>(null);
   const [profile, setProfile] = useState<any>(null);
@@ -54,8 +67,48 @@ export default function MuralPage() {
       .eq('academia_id', acadId)
       .order('created_at', { ascending: false })
       .limit(50);
-    if (data) setPosts(data);
+    if (data) {
+      setPosts(data);
+      // Carregar comentários de todos os posts
+      const postIds = data.map(p => p.id);
+      if (postIds.length > 0) {
+        const { data: comts } = await supabase
+          .from('mural_comentarios')
+          .select('*')
+          .in('post_id', postIds)
+          .order('created_at', { ascending: true });
+        if (comts) {
+          const grouped: Record<string, Comentario[]> = {};
+          comts.forEach(c => {
+            if (!grouped[c.post_id]) grouped[c.post_id] = [];
+            grouped[c.post_id].push(c);
+          });
+          setComentarios(grouped);
+        }
+      }
+    }
     setLoading(false);
+  };
+
+  const handleComentar = async (postId: string) => {
+    const txt = comentarioTexto[postId]?.trim();
+    if (!txt) return;
+
+    await supabase.from('mural_comentarios').insert({
+      post_id: postId,
+      autor_id: user.id,
+      autor_nome: profile.nome,
+      autor_role: profile.role,
+      texto: txt,
+    });
+
+    setComentarioTexto({ ...comentarioTexto, [postId]: '' });
+    loadPosts(academiaId);
+  };
+
+  const handleDeleteComentario = async (id: string) => {
+    await supabase.from('mural_comentarios').delete().eq('id', id);
+    loadPosts(academiaId);
   };
 
   const uploadToImgur = async (file: File): Promise<string | null> => {
@@ -136,6 +189,8 @@ export default function MuralPage() {
     if (diffD < 7) return `${diffD}d`;
     return d.toLocaleDateString('pt-BR');
   };
+
+  const formatDate2 = formatDate;
 
   const getRoleBadge = (role: string) => {
     if (role === 'admin') return { label: 'Professor', color: 'bg-primary-900/30 text-primary-400' };
@@ -231,6 +286,43 @@ export default function MuralPage() {
                       {post.imagem_url && (
                         <img src={post.imagem_url} alt="" className="mt-3 rounded-xl max-h-80 w-full object-cover" />
                       )}
+
+                      {/* Comentários */}
+                      <div className="mt-3 pt-3 border-t border-dark-700">
+                        <button onClick={() => setShowComentarios({ ...showComentarios, [post.id]: !showComentarios[post.id] })} className="text-xs text-dark-400 hover:text-primary-400">
+                          💬 {comentarios[post.id]?.length || 0} comentário(s)
+                        </button>
+
+                        {showComentarios[post.id] && (
+                          <div className="mt-2 space-y-2">
+                            {(comentarios[post.id] || []).map(c => (
+                              <div key={c.id} className="flex items-start gap-2 pl-2 border-l-2 border-dark-600">
+                                <div className="flex-1">
+                                  <span className="text-xs font-medium text-dark-200">{c.autor_nome}</span>
+                                  <p className="text-xs text-dark-300">{c.texto}</p>
+                                </div>
+                                <span className="text-xs text-dark-500">{formatDate2(c.created_at)}</span>
+                                {(c.autor_id === user?.id || profile?.role === 'admin') && (
+                                  <button onClick={() => handleDeleteComentario(c.id)} className="text-xs text-dark-500 hover:text-red-400">✕</button>
+                                )}
+                              </div>
+                            ))}
+
+                            {/* Input novo comentário */}
+                            <div className="flex gap-2 mt-2">
+                              <input
+                                type="text"
+                                value={comentarioTexto[post.id] || ''}
+                                onChange={(e) => setComentarioTexto({ ...comentarioTexto, [post.id]: e.target.value })}
+                                onKeyDown={(e) => { if (e.key === 'Enter') handleComentar(post.id); }}
+                                placeholder="Escreva um comentário..."
+                                className="input-field flex-1 text-xs py-1.5"
+                              />
+                              <button onClick={() => handleComentar(post.id)} className="px-3 py-1.5 bg-primary-600 text-white text-xs rounded-lg hover:bg-primary-700">Enviar</button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>
