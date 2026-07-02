@@ -23,6 +23,7 @@ export default function MensalidadesPage() {
   const [mensalidades, setMensalidades] = useState<MensalidadeComAluno[]>([]);
   const [loading, setLoading] = useState(true);
   const [filterStatus, setFilterStatus] = useState('todos');
+  const [filterConvenio, setFilterConvenio] = useState('todos');
   const [searchTerm, setSearchTerm] = useState('');
   const [mensagemCobranca, setMensagemCobranca] = useState('');
   const [showConfigMsg, setShowConfigMsg] = useState(false);
@@ -49,7 +50,7 @@ export default function MensalidadesPage() {
     // Buscar todas mensalidades
     const { data } = await supabase
       .from('mensalidades')
-      .select('*, alunos(nome, telefone, email)')
+      .select('*, alunos(nome, telefone, email, convenio_id, convenios(nome))')
       .order('data_vencimento', { ascending: false });
 
     if (data) {
@@ -159,7 +160,10 @@ export default function MensalidadesPage() {
   const filteredMensalidades = mensalidades.filter(m => {
     const matchStatus = filterStatus === 'todos' || m.status === filterStatus;
     const matchSearch = !searchTerm || m.alunos?.nome?.toLowerCase().includes(searchTerm.toLowerCase());
-    return matchStatus && matchSearch;
+    const matchConvenio = filterConvenio === 'todos' || 
+      (filterConvenio === 'com' && (m as any).alunos?.convenio_id) ||
+      (filterConvenio === 'sem' && !(m as any).alunos?.convenio_id);
+    return matchStatus && matchSearch && matchConvenio;
   });
 
   return (
@@ -167,6 +171,11 @@ export default function MensalidadesPage() {
       {/* Filtros */}
       <div className="flex flex-col sm:flex-row gap-4 mb-6">
         <input type="text" placeholder="Buscar aluno..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="input-field flex-1" />
+        <select value={filterConvenio} onChange={(e) => setFilterConvenio(e.target.value)} className="input-field w-full sm:w-48">
+          <option value="todos">Todos</option>
+          <option value="com">Com Convênio</option>
+          <option value="sem">Sem Convênio</option>
+        </select>
         <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} className="input-field w-full sm:w-48">
           <option value="todos">Todos</option>
           <option value="pendente">A vencer</option>
