@@ -131,10 +131,8 @@ export default function MensalidadesPage() {
 
   const enviarWhatsApp = (m: MensalidadeComAluno) => {
     const telefone = m.alunos.telefone.replace(/\D/g, '');
-    const msg = mensagemCobranca
-      .replace('{nome}', m.alunos.nome)
-      .replace('{valor}', Number(m.valor).toFixed(2))
-      .replace('{vencimento}', formatDate(m.data_vencimento));
+    const vencDia = m.data_vencimento ? m.data_vencimento.split('-')[2] : '—';
+    const msg = `🚨 Olá querido aluno(a) *${m.alunos.nome}*! Você está recebendo um alerta para pagamento da sua mensalidade da academia *FORCE TRAINING*.\n\nVencimento: dia *${vencDia}*\n\nCHAVE PIX CELULAR:\n*18991595595*\n(Valéria Cristina de Melo Araújo)\n\nAssim que fizer a transferência, por gentileza, compartilhar o comprovante neste contato. Grata! 🙏🏼💪🏼`;
     window.open(`https://wa.me/${telefone}?text=${encodeURIComponent(msg)}`, '_blank');
 
     supabase.from('notificacoes_whatsapp').insert({
