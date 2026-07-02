@@ -18,6 +18,7 @@ export default function RelatoriosPage() {
   const [filtroProf, setFiltroProf] = useState('');
   const [filtroAluno, setFiltroAluno] = useState('');
   const [filtroSemPlano, setFiltroSemPlano] = useState(false);
+  const [filtroConvenio, setFiltroConvenio] = useState('todos');
   const [listaProfessores, setListaProfessores] = useState<any[]>([]);
   const [listaAlunos, setListaAlunos] = useState<any[]>([]);
 
@@ -75,6 +76,7 @@ export default function RelatoriosPage() {
 
           setData((alunos || [])
             .filter(a => !filtroSemPlano || !mensalidadesMap[a.id])
+            .filter(a => filtroConvenio === 'todos' || (filtroConvenio === 'com' && (a as any).convenios?.nome) || (filtroConvenio === 'sem' && !(a as any).convenios?.nome))
             .map(a => ({
             Nome: a.nome,
             'E-mail': a.email,
@@ -144,21 +146,24 @@ export default function RelatoriosPage() {
         case 'mensalidades': {
           let mensQuery = supabase
             .from('mensalidades')
-            .select('valor, data_vencimento, data_pagamento, status, forma_pagamento, alunos(nome)')
+            .select('valor, data_vencimento, data_pagamento, status, forma_pagamento, alunos(nome, convenio_id, convenios(nome))')
             .gte('data_vencimento', periodo.inicio)
             .lte('data_vencimento', periodo.fim)
             .order('data_vencimento', { ascending: false });
           if (filtroAluno) mensQuery = mensQuery.eq('aluno_id', filtroAluno);
 
           const { data: mens } = await mensQuery;
-          setData(mens?.map(m => ({
+          setData((mens || [])
+            .filter(m => filtroConvenio === 'todos' || (filtroConvenio === 'com' && (m as any).alunos?.convenio_id) || (filtroConvenio === 'sem' && !(m as any).alunos?.convenio_id))
+            .map(m => ({
             Aluno: (m as any).alunos?.nome,
             Valor: formatMoney(m.valor),
+            Convênio: (m as any).alunos?.convenios?.nome || '—',
             Vencimento: (() => { const d = (m.data_vencimento || "").split("T")[0].split("-"); return d.length === 3 ? `${d[2]}/${d[1]}/${d[0]}` : "—"; })(),
             'Pagamento': m.data_pagamento ? (() => { const d = (m.data_pagamento || "").split("T")[0].split("-"); return d.length === 3 ? `${d[2]}/${d[1]}/${d[0]}` : "—"; })() : '—',
             Status: m.status,
             Forma: m.forma_pagamento || '—',
-          })) || []);
+          }));
           break;
         }
 
@@ -262,6 +267,16 @@ export default function RelatoriosPage() {
           {/* Filtros */}
           <div className="card">
             <div className="flex flex-wrap items-end gap-4">
+              {(reportType === 'alunos' || reportType === 'mensalidades') && (
+                <div>
+                  <label className="block text-sm font-medium text-dark-200 mb-1">Convênio</label>
+                  <select value={filtroConvenio} onChange={(e) => setFiltroConvenio(e.target.value)} className="input-field">
+                    <option value="todos">Todos</option>
+                    <option value="com">Com Convênio</option>
+                    <option value="sem">Sem Convênio</option>
+                  </select>
+                </div>
+              )}
               {reportType === 'alunos' && (
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input type="checkbox" checked={filtroSemPlano} onChange={(e) => setFiltroSemPlano(e.target.checked)} className="rounded" />
