@@ -37,6 +37,7 @@ export default function AlunosPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('todos');
   const [filterPlano, setFilterPlano] = useState('todos');
+  const [filterConvenio, setFilterConvenio] = useState('todos');
   const [selectedMods, setSelectedMods] = useState<string[]>([]);
 
   const [form, setForm] = useState({
@@ -292,7 +293,8 @@ export default function AlunosPage() {
     const matchStatus = filterStatus === 'todos' || a.status === filterStatus;
     const mods = a.aluno_modalidades?.filter((am: any) => am.status === 'ativa') || [];
     const matchPlano = filterPlano === 'todos' || (filterPlano === 'com' && mods.length > 0) || (filterPlano === 'sem' && mods.length === 0);
-    return matchSearch && matchStatus && matchPlano;
+    const matchConvenio = filterConvenio === 'todos' || (filterConvenio === 'com' && a.convenio_id) || (filterConvenio === 'sem' && !a.convenio_id);
+    return matchSearch && matchStatus && matchPlano && matchConvenio;
   });
 
   const getAlunoMods = (aluno: AlunoFull) => aluno.aluno_modalidades?.filter(am => am.status === 'ativa') || [];
@@ -309,6 +311,14 @@ export default function AlunosPage() {
             <option value="todos">Todos</option>
             <option value="com">Com Plano</option>
             <option value="sem">Sem Plano</option>
+          </select>
+        </div>
+        <div>
+          <label className="block text-xs text-dark-400 mb-1">Convênio</label>
+          <select value={filterConvenio} onChange={(e) => setFilterConvenio(e.target.value)} className="input-field w-full sm:w-40">
+            <option value="todos">Todos</option>
+            <option value="com">Com Convênio</option>
+            <option value="sem">Sem Convênio</option>
           </select>
         </div>
         <div>

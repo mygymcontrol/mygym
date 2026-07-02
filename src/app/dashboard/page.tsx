@@ -14,6 +14,7 @@ interface DashboardStats {
   checkinsHoje: number;
   mensalidadesPendentes: number;
   semPlano: number;
+  comConvenio: number;
 }
 
 export default function DashboardPage() {
@@ -25,6 +26,7 @@ export default function DashboardPage() {
     checkinsHoje: 0,
     mensalidadesPendentes: 0,
     semPlano: 0,
+    comConvenio: 0,
   });
   const [loading, setLoading] = useState(true);
 
@@ -100,8 +102,9 @@ export default function DashboardPage() {
       // Alunos sem plano (sem modalidades vinculadas)
       const { data: alunosComMod } = await supabase.from('aluno_modalidades').select('aluno_id').eq('status', 'ativa');
       const alunosComModSet = new Set((alunosComMod || []).map(m => m.aluno_id));
-      const { data: todosAtivos } = await supabase.from('alunos').select('id').eq('status', 'ativo');
+      const { data: todosAtivos } = await supabase.from('alunos').select('id, convenio_id').eq('status', 'ativo');
       const semPlano = (todosAtivos || []).filter(a => !alunosComModSet.has(a.id)).length;
+      const comConvenio = (todosAtivos || []).filter(a => a.convenio_id).length;
 
       setStats({
         totalAlunos: totalAlunos || 0,
@@ -111,6 +114,7 @@ export default function DashboardPage() {
         checkinsHoje: checkinsHoje || 0,
         mensalidadesPendentes,
         semPlano,
+        comConvenio,
       });
     } catch (error) {
       console.error('Erro ao carregar estatísticas:', error);
@@ -127,6 +131,7 @@ export default function DashboardPage() {
     { label: 'Check-ins Hoje', value: stats.checkinsHoje, icon: '/icons/qrcode.png', color: 'bg-dark-700' },
     { label: 'Mensalidades Pendentes', value: stats.mensalidadesPendentes, icon: '/icons/mensalidades-pendentes.jpg', color: 'bg-dark-700' },
     { label: 'Sem Plano', value: stats.semPlano, icon: '/icons/inadimplentes.jpg', color: stats.semPlano > 0 ? 'bg-yellow-900/20 border border-yellow-700' : 'bg-dark-700' },
+    { label: 'Com Convênio', value: stats.comConvenio, icon: '/icons/alunos-ativos.jpg', color: 'bg-dark-700' },
   ];
 
   return (
