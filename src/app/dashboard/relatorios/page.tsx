@@ -156,14 +156,15 @@ export default function RelatoriosPage() {
           setData((mens || [])
             .filter(m => filtroConvenio === 'todos' || (filtroConvenio === 'com' && (m as any).alunos?.convenio_id) || (filtroConvenio === 'sem' && !(m as any).alunos?.convenio_id))
             .map(m => ({
-            Aluno: (m as any).alunos?.nome,
-            Valor: formatMoney(m.valor),
-            Convênio: (m as any).alunos?.convenios?.nome || '—',
-            Vencimento: (() => { const d = (m.data_vencimento || "").split("T")[0].split("-"); return d.length === 3 ? `${d[2]}/${d[1]}/${d[0]}` : "—"; })(),
-            'Pagamento': m.data_pagamento ? (() => { const d = (m.data_pagamento || "").split("T")[0].split("-"); return d.length === 3 ? `${d[2]}/${d[1]}/${d[0]}` : "—"; })() : '—',
-            Status: m.status,
-            Forma: m.forma_pagamento || '—',
-          }));
+              Aluno: (m as any).alunos?.nome,
+              Valor: formatMoney(m.valor),
+              Convênio: (m as any).alunos?.convenios?.nome || '—',
+              Vencimento: (() => { const d = (m.data_vencimento || "").split("T")[0].split("-"); return d.length === 3 ? `${d[2]}/${d[1]}/${d[0]}` : "—"; })(),
+              'Pagamento': m.data_pagamento ? (() => { const d = (m.data_pagamento || "").split("T")[0].split("-"); return d.length === 3 ? `${d[2]}/${d[1]}/${d[0]}` : "—"; })() : '—',
+              Status: m.status,
+              Forma: m.forma_pagamento || '—',
+            }))
+          );
           break;
         }
 
