@@ -231,9 +231,18 @@ export default function AlunosPage() {
     setShowFicha(true);
   };
 
+  const atualizarValorMensalidade = async (alunoId: string) => {
+    // Recalcular valor baseado nas modalidades ativas
+    const { data: mods } = await supabase.from('aluno_modalidades').select('modalidade_id, modalidades(valor)').eq('aluno_id', alunoId).eq('status', 'ativa');
+    const novoValor = (mods || []).reduce((sum: number, m: any) => sum + (Number(m.modalidades?.valor) || 0), 0);
+    // Atualizar mensalidades pendentes
+    await supabase.from('mensalidades').update({ valor: novoValor }).eq('aluno_id', alunoId).eq('status', 'pendente');
+  };
+
   const handleAddModalidade = async (alunoId: string, modId: string) => {
     await supabase.from('aluno_modalidades').insert({ aluno_id: alunoId, modalidade_id: modId, status: 'ativa' });
     await supabase.from('log_modalidades_aluno').insert({ aluno_id: alunoId, modalidade_id: modId, acao: 'adicionada' });
+    await atualizarValorMensalidade(alunoId);
     loadAll();
     if (fichaAluno) { await loadLogMod(alunoId); setFichaAluno({ ...fichaAluno }); }
     setShowAddMod(false);
@@ -244,6 +253,7 @@ export default function AlunosPage() {
     if (motivo === null) return;
     await supabase.from('aluno_modalidades').update({ status: 'inativa', data_fim: new Date().toISOString().split('T')[0] }).eq('id', alunoModId);
     await supabase.from('log_modalidades_aluno').insert({ aluno_id: alunoId, modalidade_id: modId, acao: 'removida', observacao: motivo || null });
+    await atualizarValorMensalidade(alunoId);
     loadAll();
     if (fichaAluno) await loadLogMod(alunoId);
   };
