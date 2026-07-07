@@ -202,6 +202,10 @@ export default function AlunosPage() {
       }
 
       const senhaExibir = cpfDigitos.length >= 6 ? senhaTemp + ' (6 dígitos do CPF)' : 'Gym123 (padrão)';
+      
+      // Marcar pré-cadastro como aprovado se existir
+      await supabase.from('pre_cadastros').update({ status: 'aprovado' }).eq('email', form.email);
+      
       alert(`✅ Aluno cadastrado!\n\nE-mail: ${form.email}\nSenha: ${senhaExibir}`);
     }
     setShowModal(false);

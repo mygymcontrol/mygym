@@ -7,12 +7,12 @@ async function run() {
   const modValor = {};
   modalidades.forEach(m => { modValor[m.id] = Number(m.valor) || 0; });
 
-  // Buscar todos os alunos com suas modalidades
-  const { data: alunos } = await s.from('alunos').select('id, nome, aluno_modalidades(modalidade_id)').eq('status', 'ativo');
+  // Buscar todos os alunos com suas modalidades ATIVAS
+  const { data: alunos } = await s.from('alunos').select('id, nome, aluno_modalidades(modalidade_id, status)').eq('status', 'ativo');
 
   let corrigidos = 0;
   for (const al of alunos) {
-    const mods = al.aluno_modalidades || [];
+    const mods = (al.aluno_modalidades || []).filter(m => m.status === 'ativa');
     const valorCorreto = mods.reduce((sum, m) => sum + (modValor[m.modalidade_id] || 0), 0);
     if (valorCorreto === 0) continue;
 

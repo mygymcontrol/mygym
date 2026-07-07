@@ -151,7 +151,7 @@ async function run() {
     }
 
     // Marcar como importado
-    await supabase.from('pre_cadastros').update({ status: 'importado' }).eq('id', pre.id);
+    await supabase.from('pre_cadastros').update({ status: 'aprovado' }).eq('id', pre.id);
 
     const modNomes = modIds.map(id => modalidades.find(m => m.id === id)?.nome || '?').join(', ');
     console.log(`  ✅ ${pre.nome} | ${modNomes || 'sem mod'} | R$ ${valorMensal.toFixed(2)} | venc dia ${diaVenc} | hipertrofia: ${temHipertrofia}`);
