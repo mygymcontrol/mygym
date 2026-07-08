@@ -134,6 +134,14 @@ export default function AlunosPage() {
         .from('alunos').insert({ ...alunoPayload, user_id: userId }).select().single();
       if (errAluno || !novoAluno) { alert('Erro: ' + errAluno?.message); return; }
 
+      // Criar profile para login funcionar
+      if (userId) {
+        const academiaId = localStorage.getItem('academia_id');
+        await supabase.from('profiles').upsert({
+          id: userId, email: form.email, nome: form.nome, role: 'aluno', academia_id: academiaId,
+        });
+      }
+
       // Vincular modalidades
       if (selectedMods.length > 0) {
         const vinculos = selectedMods.map(modId => ({

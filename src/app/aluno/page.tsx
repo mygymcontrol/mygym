@@ -57,14 +57,32 @@ export default function PortalAlunoPage() {
     if (!user) { window.location.href = '/'; return; }
 
     const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single();
-    if (profile?.role !== 'aluno') { window.location.href = '/dashboard/'; return; }
+    
+    if (!profile || !profile.role) {
+      // Profile não existe — tentar auto-corrigir via API
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.access_token) {
+        const resp = await fetch('/api/fix-aluno-profile', {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${session.access_token}` },
+        });
+        const result = await resp.json();
+        if (!result.isAluno) { window.location.href = '/'; return; }
+        // Profile criado — continuar carregamento
+      } else {
+        window.location.href = '/'; return;
+      }
+    } else if (profile.role !== 'aluno') {
+      window.location.href = '/dashboard/'; return;
+    }
 
-      // Buscar aluno
+    // Buscar aluno
     let alunoData = null;
     const { data: byUserId } = await supabase.from('alunos').select('id, nome, email, status, treino_hipertrofia').eq('user_id', user.id).single();
     if (byUserId) {
       alunoData = byUserId;
     } else {
+      // Fallback por email (pode falhar por RLS se user_id não está vinculado)
       const { data: byEmail } = await supabase.from('alunos').select('id, nome, email, status, treino_hipertrofia').eq('email', user.email).single();
       if (byEmail) alunoData = byEmail;
     }
@@ -77,6 +95,27 @@ export default function PortalAlunoPage() {
       } else {
         const { data: byEmail2 } = await supabase.from('alunos').select('id, nome, email, status').eq('email', user.email).single();
         if (byEmail2) alunoData = { ...byEmail2, treino_hipertrofia: false };
+      }
+    }
+
+    // Se ainda não encontrou, tentar via API (que bypassa RLS)
+    if (!alunoData) {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.access_token) {
+        const resp = await fetch('/api/fix-aluno-profile', {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${session.access_token}` },
+        });
+        const result = await resp.json();
+        if (result.isAluno) {
+          // Tentar buscar de novo após fix
+          const { data: retryData } = await supabase.from('alunos').select('id, nome, email, status, treino_hipertrofia').eq('user_id', user.id).single();
+          if (retryData) alunoData = retryData;
+          else {
+            const { data: retryData2 } = await supabase.from('alunos').select('id, nome, email, status').eq('user_id', user.id).single();
+            if (retryData2) alunoData = { ...retryData2, treino_hipertrofia: false };
+          }
+        }
       }
     }
 

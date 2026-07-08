@@ -42,7 +42,23 @@ export default function LoginPage() {
       window.location.href = '/aluno/';
     } else if (profile?.role === 'professor') {
       window.location.href = '/professor/';
+    } else if (profile?.role === 'admin' || profile?.role === 'recepcao') {
+      window.location.href = '/dashboard/';
     } else {
+      // Profile não existe ou sem role — verificar se é aluno cadastrado
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      if (token) {
+        const resp = await fetch('/api/fix-aluno-profile', {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${token}` },
+        });
+        const result = await resp.json();
+        if (result.isAluno) {
+          window.location.href = '/aluno/';
+          return;
+        }
+      }
       window.location.href = '/dashboard/';
     }
   };
