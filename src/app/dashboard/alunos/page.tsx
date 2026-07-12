@@ -101,6 +101,12 @@ export default function AlunosPage() {
     if (editingAluno) {
       const { error } = await supabase.from('alunos').update(alunoPayload).eq('id', editingAluno.id);
       if (error) { alert('Erro ao salvar: ' + error.message); return; }
+      
+      // Atualizar data_inicio e dia_vencimento na matrícula
+      if (form.data_inicio) {
+        await supabase.from('matriculas').update({ data_inicio: form.data_inicio }).eq('aluno_id', editingAluno.id).in('status', ['ativa', 'suspensa']);
+      }
+      
       setShowModal(false);
       loadAll();
       return;
