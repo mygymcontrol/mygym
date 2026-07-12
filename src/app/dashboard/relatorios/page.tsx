@@ -2,10 +2,10 @@
 
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
-import { getHoje, formatMoney } from '@/lib/utils';
+import { getHoje, formatMoney, formatDate } from '@/lib/utils';
 import DashboardLayout from '@/components/DashboardLayout';
 
-type ReportType = 'alunos' | 'financeiro' | 'inadimplentes' | 'checkins' | 'mensalidades' | 'professores';
+type ReportType = 'alunos' | 'financeiro' | 'inadimplentes' | 'checkins' | 'mensalidades' | 'professores' | 'caixa';
 
 export default function RelatoriosPage() {
   const [reportType, setReportType] = useState<ReportType>('alunos');
@@ -43,6 +43,7 @@ export default function RelatoriosPage() {
     { id: 'checkins', label: 'Frequência', icon: '/icons/qrcode.png', desc: 'Check-ins realizados no período' },
     { id: 'mensalidades', label: 'Mensalidades', icon: '/icons/mensalidades-pendentes.jpg', desc: 'Todas as mensalidades com status' },
     { id: 'professores', label: 'Professores', icon: '/icons/professores.png', desc: 'Aulas confirmadas e valores por professor' },
+    { id: 'caixa', label: 'Entradas e Saídas', icon: '/icons/mensalidades.jpg', desc: 'Movimentações financeiras (entradas e saídas)' },
   ];
 
   const generateReport = async () => {
@@ -206,6 +207,27 @@ export default function RelatoriosPage() {
             });
           });
           setData(rows);
+          break;
+        }
+
+        case 'caixa': {
+          const academiaId = localStorage.getItem('academia_id');
+          const { data: movs } = await supabase
+            .from('financeiro')
+            .select('*')
+            .eq('academia_id', academiaId)
+            .gte('data', periodo.inicio)
+            .lte('data', periodo.fim)
+            .order('data', { ascending: false });
+
+          setData((movs || []).map(m => ({
+            Data: formatDate(m.data),
+            Tipo: m.tipo === 'entrada' ? 'Entrada' : 'Saída',
+            Categoria: m.categoria || '—',
+            Descrição: m.descricao || '—',
+            Valor: formatMoney(m.valor),
+            'Registrado por': m.registrado_por || '—',
+          })));
           break;
         }
       }
