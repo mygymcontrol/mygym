@@ -21,6 +21,7 @@ const menuItems = [
   { id: 'relatorios', label: 'Relatórios', icon: '/icons/relatorios.jpg', href: '/dashboard/relatorios/' },
   { id: 'whatsapp', label: 'WhatsApp', icon: '/icons/whatsapp.png', href: '/dashboard/whatsapp/' },
   { id: 'configuracoes', label: 'Configurações', icon: '/icons/configuracoes.jpg', href: '/dashboard/configuracoes/' },
+  { id: 'financeiro', label: 'Financeiro', icon: '/icons/mensalidades.jpg', href: '/dashboard/financeiro/' },
   { id: 'precadastros', label: 'Pré-Cadastros', icon: '/icons/novo-aluno.jpg', href: '/dashboard/precadastros/' },
   { id: 'aniversariantes', label: 'Aniversariantes', icon: '/icons/avaliacoes.jpg', href: '/dashboard/aniversariantes/' },
   { id: 'mural', label: 'Mural', icon: '/icons/whatsapp.png', href: '/mural/' },
