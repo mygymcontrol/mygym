@@ -102,9 +102,19 @@ export default function AlunosPage() {
       const { error } = await supabase.from('alunos').update(alunoPayload).eq('id', editingAluno.id);
       if (error) { alert('Erro ao salvar: ' + error.message); return; }
       
-      // Atualizar data_inicio e dia_vencimento na matrícula
+      // Atualizar ou criar matrícula com data_inicio
       if (form.data_inicio) {
-        await supabase.from('matriculas').update({ data_inicio: form.data_inicio }).eq('aluno_id', editingAluno.id).in('status', ['ativa', 'suspensa']);
+        const { data: matExist } = await supabase.from('matriculas').select('id').eq('aluno_id', editingAluno.id).in('status', ['ativa', 'suspensa']).single();
+        if (matExist) {
+          await supabase.from('matriculas').update({ data_inicio: form.data_inicio }).eq('id', matExist.id);
+        } else {
+          // Criar matrícula se não existe
+          await supabase.from('matriculas').insert({
+            aluno_id: editingAluno.id, data_inicio: form.data_inicio,
+            data_fim: `${parseInt(form.data_inicio.split('-')[0]) + 1}${form.data_inicio.slice(4)}`,
+            valor_final: 0, status: 'ativa',
+          });
+        }
       }
       
       setShowModal(false);
