@@ -13,6 +13,7 @@ export default function ConveniosPage() {
   const [form, setForm] = useState({
     nome: '',
     desconto_percentual: '',
+    valor_checkin: '',
     descricao: '',
     ativo: true,
   });
@@ -36,7 +37,8 @@ export default function ConveniosPage() {
 
     const payload = {
       nome: form.nome,
-      desconto_percentual: parseFloat(form.desconto_percentual),
+      desconto_percentual: parseFloat(form.desconto_percentual) || 0,
+      valor_checkin: parseFloat(form.valor_checkin) || 0,
       descricao: form.descricao || null,
       ativo: form.ativo,
     };
@@ -56,6 +58,7 @@ export default function ConveniosPage() {
     setForm({
       nome: convenio.nome,
       desconto_percentual: String(convenio.desconto_percentual),
+      valor_checkin: String(convenio.valor_checkin || ''),
       descricao: convenio.descricao || '',
       ativo: convenio.ativo,
     });
@@ -64,7 +67,7 @@ export default function ConveniosPage() {
 
   const handleNew = () => {
     setEditing(null);
-    setForm({ nome: '', desconto_percentual: '', descricao: '', ativo: true });
+    setForm({ nome: '', desconto_percentual: '', valor_checkin: '', descricao: '', ativo: true });
     setShowModal(true);
   };
 
@@ -125,10 +128,22 @@ export default function ConveniosPage() {
 
               <div className="flex items-center gap-4">
                 <div className="text-right">
-                  <span className="text-2xl font-bold text-primary-600">
-                    {convenio.desconto_percentual}%
-                  </span>
-                  <p className="text-xs text-dark-400">de desconto</p>
+                  {convenio.desconto_percentual > 0 && (
+                    <>
+                      <span className="text-2xl font-bold text-primary-600">
+                        {convenio.desconto_percentual}%
+                      </span>
+                      <p className="text-xs text-dark-400">de desconto</p>
+                    </>
+                  )}
+                  {(convenio.valor_checkin ?? 0) > 0 && (
+                    <>
+                      <span className="text-2xl font-bold text-emerald-500">
+                        R$ {Number(convenio.valor_checkin).toFixed(2)}
+                      </span>
+                      <p className="text-xs text-dark-400">por check-in</p>
+                    </>
+                  )}
                 </div>
 
                 <div className="flex items-center gap-2">
@@ -188,7 +203,7 @@ export default function ConveniosPage() {
 
               <div>
                 <label className="block text-sm font-medium text-dark-200 mb-1">
-                  Percentual de Desconto (%) *
+                  Percentual de Desconto (%)
                 </label>
                 <input
                   type="number"
@@ -199,10 +214,27 @@ export default function ConveniosPage() {
                   min="0"
                   max="100"
                   step="0.01"
-                  required
                 />
                 <p className="text-xs text-dark-400 mt-1">
                   Este desconto será aplicado automaticamente na mensalidade dos alunos vinculados.
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-dark-200 mb-1">
+                  Valor por Check-in (R$)
+                </label>
+                <input
+                  type="number"
+                  value={form.valor_checkin}
+                  onChange={(e) => setForm({...form, valor_checkin: e.target.value})}
+                  className="input-field"
+                  placeholder="Ex: 6.15"
+                  min="0"
+                  step="0.01"
+                />
+                <p className="text-xs text-dark-400 mt-1">
+                  Cada check-in do aluno abate este valor da mensalidade (ex: Gympass).
                 </p>
               </div>
 

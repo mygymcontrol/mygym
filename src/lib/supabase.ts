@@ -38,6 +38,7 @@ export interface Convenio {
   id: string;
   nome: string;
   desconto_percentual: number;
+  valor_checkin?: number;
   ativo: boolean;
   descricao?: string;
   created_at: string;

@@ -16,7 +16,7 @@ interface MensalidadeComAluno {
   comprovante_url?: string;
   observacoes?: string;
   aluno_id: string;
-  alunos: { nome: string; telefone: string; email: string };
+  alunos: { nome: string; telefone: string; email: string; convenio_id?: string; convenios?: { nome: string; valor_checkin?: number } };
 }
 
 export default function MensalidadesPage() {
@@ -38,6 +38,9 @@ export default function MensalidadesPage() {
     comprovante: null as File | null,
   });
 
+  // Check-in counts per aluno per month (key: `${aluno_id}_${YYYY-MM}`)
+  const [checkinCounts, setCheckinCounts] = useState<Record<string, number>>({});
+
   useEffect(() => {
     loadMensalidades();
     loadMensagemCobranca();
@@ -50,7 +53,7 @@ export default function MensalidadesPage() {
     // Buscar todas mensalidades
     const { data } = await supabase
       .from('mensalidades')
-      .select('*, alunos(nome, telefone, email, convenio_id, convenios(nome))')
+      .select('*, alunos(nome, telefone, email, convenio_id, convenios(nome, valor_checkin))')
       .order('data_vencimento', { ascending: false });
 
     if (data) {
@@ -66,8 +69,49 @@ export default function MensalidadesPage() {
         return false;
       });
       setMensalidades(filtered as any);
+
+      // Load check-in counts for alunos with valor_checkin convênio
+      await loadCheckinCounts(filtered as any);
     }
     setLoading(false);
+  };
+
+  const loadCheckinCounts = async (mensalidadesList: MensalidadeComAluno[]) => {
+    const counts: Record<string, number> = {};
+
+    // Get unique aluno+month combos that have valor_checkin
+    const toQuery: { aluno_id: string; year: number; month: number }[] = [];
+    for (const m of mensalidadesList) {
+      const valorCheckin = (m.alunos as any)?.convenios?.valor_checkin;
+      if (valorCheckin && valorCheckin > 0) {
+        const [ano, mes] = m.data_vencimento.split('-').map(Number);
+        const key = `${m.aluno_id}_${ano}-${String(mes).padStart(2, '0')}`;
+        if (!counts[key] && counts[key] !== 0) {
+          toQuery.push({ aluno_id: m.aluno_id, year: ano, month: mes });
+          counts[key] = 0; // placeholder
+        }
+      }
+    }
+
+    // Query check-ins for each aluno/month
+    for (const q of toQuery) {
+      const startDate = `${q.year}-${String(q.month).padStart(2, '0')}-01`;
+      const endDate = q.month === 12
+        ? `${q.year + 1}-01-01`
+        : `${q.year}-${String(q.month + 1).padStart(2, '0')}-01`;
+
+      const { count } = await supabase
+        .from('checkins')
+        .select('*', { count: 'exact', head: true })
+        .eq('aluno_id', q.aluno_id)
+        .gte('data', startDate)
+        .lt('data', endDate);
+
+      const key = `${q.aluno_id}_${q.year}-${String(q.month).padStart(2, '0')}`;
+      counts[key] = count || 0;
+    }
+
+    setCheckinCounts(counts);
   };
 
   const loadMensagemCobranca = async () => {
@@ -164,6 +208,18 @@ export default function MensalidadesPage() {
     return matchStatus && matchSearch && matchConvenio;
   });
 
+  // Helper to calculate check-in discount for a mensalidade
+  const getCheckinDiscount = (m: MensalidadeComAluno) => {
+    const valorCheckin = (m.alunos as any)?.convenios?.valor_checkin || 0;
+    if (!valorCheckin || valorCheckin <= 0) return { checkins: 0, desconto: 0, valorAPagar: m.valor, hasDiscount: false };
+    const [ano, mes] = m.data_vencimento.split('-').map(Number);
+    const key = `${m.aluno_id}_${ano}-${String(mes).padStart(2, '0')}`;
+    const checkins = checkinCounts[key] || 0;
+    const desconto = checkins * valorCheckin;
+    const valorAPagar = Math.max(0, m.valor - desconto);
+    return { checkins, desconto, valorAPagar, hasDiscount: true };
+  };
+
   return (
     <DashboardLayout activeMenu="mensalidades" title="Mensalidades">
       {/* Filtros */}
@@ -204,6 +260,9 @@ export default function MensalidadesPage() {
                 <th className="px-4 py-3"><input type="checkbox" onChange={selectAll} checked={selectedIds.length === filteredMensalidades.length && filteredMensalidades.length > 0} className="rounded" /></th>
                 <th className="text-left px-4 py-3 text-xs font-medium text-dark-400 uppercase">Aluno</th>
                 <th className="text-left px-4 py-3 text-xs font-medium text-dark-400 uppercase">Valor</th>
+                <th className="text-left px-4 py-3 text-xs font-medium text-dark-400 uppercase">Check-ins</th>
+                <th className="text-left px-4 py-3 text-xs font-medium text-dark-400 uppercase">Desconto</th>
+                <th className="text-left px-4 py-3 text-xs font-medium text-dark-400 uppercase">A Pagar</th>
                 <th className="text-left px-4 py-3 text-xs font-medium text-dark-400 uppercase">Vencimento</th>
                 <th className="text-left px-4 py-3 text-xs font-medium text-dark-400 uppercase">Status</th>
                 <th className="text-left px-4 py-3 text-xs font-medium text-dark-400 uppercase">Comprovante</th>
@@ -212,18 +271,50 @@ export default function MensalidadesPage() {
             </thead>
             <tbody className="divide-y divide-dark-100">
               {loading ? (
-                <tr><td colSpan={7} className="px-6 py-8 text-center text-dark-400">Carregando...</td></tr>
+                <tr><td colSpan={10} className="px-6 py-8 text-center text-dark-400">Carregando...</td></tr>
               ) : filteredMensalidades.length === 0 ? (
-                <tr><td colSpan={7} className="px-6 py-8 text-center text-dark-400">Nenhuma mensalidade encontrada</td></tr>
+                <tr><td colSpan={10} className="px-6 py-8 text-center text-dark-400">Nenhuma mensalidade encontrada</td></tr>
               ) : (
-                filteredMensalidades.map((m) => (
+                filteredMensalidades.map((m) => {
+                  const discount = getCheckinDiscount(m);
+                  return (
                   <tr key={m.id} className="hover:bg-dark-800">
                     <td className="px-4 py-3"><input type="checkbox" checked={selectedIds.includes(m.id)} onChange={() => toggleSelect(m.id)} className="rounded" /></td>
                     <td className="px-4 py-3">
                       <p className="font-medium text-dark-100">{m.alunos?.nome}</p>
                       <p className="text-xs text-dark-400">{m.alunos?.telefone}</p>
+                      {(m.alunos as any)?.convenios?.nome && (
+                        <p className="text-xs text-blue-400">{(m.alunos as any).convenios.nome}</p>
+                      )}
                     </td>
-                    <td className="px-4 py-3 font-medium">R$ {Number(m.valor).toFixed(2)}</td>
+                    <td className="px-4 py-3 font-medium">
+                      {discount.hasDiscount ? (
+                        <span className="line-through text-dark-400">R$ {Number(m.valor).toFixed(2)}</span>
+                      ) : (
+                        <span>R$ {Number(m.valor).toFixed(2)}</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 text-dark-200">
+                      {discount.hasDiscount ? (
+                        <span className="text-emerald-400 font-medium">{discount.checkins}</span>
+                      ) : (
+                        <span className="text-dark-500">—</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 text-dark-200">
+                      {discount.hasDiscount && discount.desconto > 0 ? (
+                        <span className="text-emerald-400">-R$ {discount.desconto.toFixed(2)}</span>
+                      ) : (
+                        <span className="text-dark-500">—</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 font-medium">
+                      {discount.hasDiscount ? (
+                        <span className="text-emerald-300 font-bold">R$ {discount.valorAPagar.toFixed(2)}</span>
+                      ) : (
+                        <span>R$ {Number(m.valor).toFixed(2)}</span>
+                      )}
+                    </td>
                     <td className="px-4 py-3 text-dark-200">{formatDate(m.data_vencimento)}</td>
                     <td className="px-4 py-3"><span className={`badge-${m.status === 'pago' ? 'pago' : m.status === 'atrasado' ? 'inadimplente' : 'pendente'}`}>{m.status === 'pendente' ? 'A vencer' : m.status === 'pago' ? 'Pago' : m.status}</span></td>
                     <td className="px-4 py-3">
@@ -240,7 +331,8 @@ export default function MensalidadesPage() {
                       )}
                     </td>
                   </tr>
-                ))
+                  );
+                })
               )}
             </tbody>
           </table>
