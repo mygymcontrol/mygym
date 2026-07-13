@@ -87,7 +87,7 @@ export default function MensalidadesPage() {
       setConvenioMods(grouped);
 
       // Load aluno modalidade values for alunos with convênio
-      const alunoIdsWithConvenio = [...new Set(filtered.filter((m: any) => m.alunos?.convenio_id).map((m: any) => m.aluno_id))];
+      const alunoIdsWithConvenio = Array.from(new Set(filtered.filter((m: any) => m.alunos?.convenio_id).map((m: any) => m.aluno_id)));
       const alunoModMap: Record<string, {mod_id: string, valor: number}[]> = {};
       for (const alunoId of alunoIdsWithConvenio) {
         const { data: ams } = await supabase.from('aluno_modalidades').select('modalidade_id, modalidades(valor)').eq('aluno_id', alunoId).eq('status', 'ativa');
