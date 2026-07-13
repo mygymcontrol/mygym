@@ -208,16 +208,16 @@ export default function MensalidadesPage() {
     return matchStatus && matchSearch && matchConvenio;
   });
 
-  // Helper to calculate check-in discount for a mensalidade
-  const getCheckinDiscount = (m: MensalidadeComAluno) => {
+  // Helper: calcular acréscimo Gympass (check-ins × valor_checkin)
+  const getCheckinAcrescimo = (m: MensalidadeComAluno) => {
     const valorCheckin = (m.alunos as any)?.convenios?.valor_checkin || 0;
-    if (!valorCheckin || valorCheckin <= 0) return { checkins: 0, desconto: 0, valorAPagar: m.valor, hasDiscount: false };
+    if (!valorCheckin || valorCheckin <= 0) return { checkins: 0, acrescimo: 0, valorTotal: m.valor, hasConvenio: false };
     const [ano, mes] = m.data_vencimento.split('-').map(Number);
     const key = `${m.aluno_id}_${ano}-${String(mes).padStart(2, '0')}`;
     const checkins = checkinCounts[key] || 0;
-    const desconto = checkins * valorCheckin;
-    const valorAPagar = Math.max(0, m.valor - desconto);
-    return { checkins, desconto, valorAPagar, hasDiscount: true };
+    const acrescimo = checkins * valorCheckin;
+    const valorTotal = m.valor + acrescimo;
+    return { checkins, acrescimo, valorTotal, hasConvenio: true };
   };
 
   return (
@@ -261,8 +261,8 @@ export default function MensalidadesPage() {
                 <th className="text-left px-4 py-3 text-xs font-medium text-dark-400 uppercase">Aluno</th>
                 <th className="text-left px-4 py-3 text-xs font-medium text-dark-400 uppercase">Valor</th>
                 <th className="text-left px-4 py-3 text-xs font-medium text-dark-400 uppercase">Check-ins</th>
-                <th className="text-left px-4 py-3 text-xs font-medium text-dark-400 uppercase">Desconto</th>
-                <th className="text-left px-4 py-3 text-xs font-medium text-dark-400 uppercase">A Pagar</th>
+                <th className="text-left px-4 py-3 text-xs font-medium text-dark-400 uppercase">Gympass</th>
+                <th className="text-left px-4 py-3 text-xs font-medium text-dark-400 uppercase">Total</th>
                 <th className="text-left px-4 py-3 text-xs font-medium text-dark-400 uppercase">Vencimento</th>
                 <th className="text-left px-4 py-3 text-xs font-medium text-dark-400 uppercase">Status</th>
                 <th className="text-left px-4 py-3 text-xs font-medium text-dark-400 uppercase">Comprovante</th>
@@ -276,7 +276,7 @@ export default function MensalidadesPage() {
                 <tr><td colSpan={10} className="px-6 py-8 text-center text-dark-400">Nenhuma mensalidade encontrada</td></tr>
               ) : (
                 filteredMensalidades.map((m) => {
-                  const discount = getCheckinDiscount(m);
+                  const gym = getCheckinAcrescimo(m);
                   return (
                   <tr key={m.id} className="hover:bg-dark-800">
                     <td className="px-4 py-3"><input type="checkbox" checked={selectedIds.includes(m.id)} onChange={() => toggleSelect(m.id)} className="rounded" /></td>
@@ -287,30 +287,26 @@ export default function MensalidadesPage() {
                         <p className="text-xs text-blue-400">{(m.alunos as any).convenios.nome}</p>
                       )}
                     </td>
-                    <td className="px-4 py-3 font-medium">
-                      {discount.hasDiscount ? (
-                        <span className="line-through text-dark-400">R$ {Number(m.valor).toFixed(2)}</span>
-                      ) : (
-                        <span>R$ {Number(m.valor).toFixed(2)}</span>
-                      )}
+                    <td className="px-4 py-3 font-medium text-dark-200">
+                      R$ {Number(m.valor).toFixed(2)}
                     </td>
                     <td className="px-4 py-3 text-dark-200">
-                      {discount.hasDiscount ? (
-                        <span className="text-emerald-400 font-medium">{discount.checkins}</span>
+                      {gym.hasConvenio ? (
+                        <span className="text-emerald-400 font-medium">{gym.checkins}</span>
                       ) : (
                         <span className="text-dark-500">—</span>
                       )}
                     </td>
                     <td className="px-4 py-3 text-dark-200">
-                      {discount.hasDiscount && discount.desconto > 0 ? (
-                        <span className="text-emerald-400">-R$ {discount.desconto.toFixed(2)}</span>
+                      {gym.hasConvenio && gym.acrescimo > 0 ? (
+                        <span className="text-yellow-400">+R$ {gym.acrescimo.toFixed(2)}</span>
                       ) : (
                         <span className="text-dark-500">—</span>
                       )}
                     </td>
                     <td className="px-4 py-3 font-medium">
-                      {discount.hasDiscount ? (
-                        <span className="text-emerald-300 font-bold">R$ {discount.valorAPagar.toFixed(2)}</span>
+                      {gym.hasConvenio ? (
+                        <span className="text-primary-400 font-bold">R$ {gym.valorTotal.toFixed(2)}</span>
                       ) : (
                         <span>R$ {Number(m.valor).toFixed(2)}</span>
                       )}
