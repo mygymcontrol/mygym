@@ -246,9 +246,12 @@ export default function MensalidadesPage() {
     // Sem convênio
     if (!convenioId) return { checkins: 0, acrescimo: 0, valorTotal: m.valor, hasConvenio: false, valorBase: m.valor, descontoPct: 0 };
 
-    // Convênio com desconto percentual (ex: Plano Família 10%) - já aplicado no valor da mensalidade
+    // Convênio com desconto percentual (ex: Plano Família 10%) - calcular valor com desconto
     if (descontoPct > 0 && valorCheckin <= 0) {
-      return { checkins: 0, acrescimo: 0, valorTotal: m.valor, hasConvenio: true, valorBase: m.valor, descontoPct: 0 };
+      const alunoMods = alunoModValores[m.aluno_id] || [];
+      const valorPlano = alunoMods.length > 0 ? alunoMods.reduce((s, am) => s + am.valor, 0) : Number(m.valor);
+      const valorComDesconto = valorPlano * (1 - descontoPct / 100);
+      return { checkins: 0, acrescimo: 0, valorTotal: valorComDesconto, hasConvenio: true, valorBase: valorPlano, descontoPct };
     }
 
     // Convênio com valor por check-in (ex: Gympass)
