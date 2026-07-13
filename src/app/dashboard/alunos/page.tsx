@@ -388,15 +388,16 @@ export default function AlunosPage() {
                 <th className="text-left px-6 py-3 text-xs font-medium text-dark-400 uppercase">Modalidades</th>
                 <th className="text-left px-6 py-3 text-xs font-medium text-dark-400 uppercase">Início</th>
                 <th className="text-left px-6 py-3 text-xs font-medium text-dark-400 uppercase">Mensalidade</th>
+                <th className="text-left px-6 py-3 text-xs font-medium text-dark-400 uppercase">Convênio</th>
                 <th className="text-left px-6 py-3 text-xs font-medium text-dark-400 uppercase">Status</th>
                 <th className="text-right px-6 py-3 text-xs font-medium text-dark-400 uppercase">Ações</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-dark-100">
               {loading ? (
-                <tr><td colSpan={6} className="px-6 py-8 text-center text-dark-400">Carregando...</td></tr>
+                <tr><td colSpan={7} className="px-6 py-8 text-center text-dark-400">Carregando...</td></tr>
               ) : filteredAlunos.length === 0 ? (
-                <tr><td colSpan={6} className="px-6 py-8 text-center text-dark-400">Nenhum aluno encontrado</td></tr>
+                <tr><td colSpan={7} className="px-6 py-8 text-center text-dark-400">Nenhum aluno encontrado</td></tr>
               ) : (
                 filteredAlunos.map((aluno) => {
                   const mods = getAlunoMods(aluno);
@@ -407,7 +408,6 @@ export default function AlunosPage() {
                         <p className="font-medium text-dark-100">{aluno.nome}</p>
                         <p className="text-sm text-dark-400">{aluno.telefone}</p>
                         <p className="text-xs text-dark-200">Matrícula: #{aluno.id.slice(-6).toUpperCase()}</p>
-                        {aluno.convenio_id && (() => { const conv = convenios.find(c => c.id === aluno.convenio_id); return conv ? <p className="text-xs text-blue-400">{conv.nome}</p> : null; })()}
                       </td>
                       <td className="px-6 py-4">
                         {mods.length > 0 ? (
@@ -448,6 +448,9 @@ export default function AlunosPage() {
                           }
                           return `R$ ${valorFixo.toFixed(2)}`;
                         })()}
+                      </td>
+                      <td className="px-6 py-4 text-sm">
+                        {aluno.convenio_id ? (() => { const conv = convenios.find(c => c.id === aluno.convenio_id); return conv ? <span className="text-blue-400 font-medium">{conv.nome}</span> : '—'; })() : '—'}
                       </td>
                       <td className="px-6 py-4"><span className={statusBadge(aluno.status)}>{aluno.status}</span></td>
                       <td className="px-6 py-4 text-right space-x-2" onClick={(e) => e.stopPropagation()}>
