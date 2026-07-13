@@ -346,8 +346,18 @@ export default function MensalidadesPage() {
                     </td>
                     <td className="px-4 py-3 font-medium text-dark-200">
                       {(() => {
-                        // Valor cheio do plano (soma das modalidades sem desconto)
+                        // Para Gympass: mostra valor das modalidades NÃO cobertas pelo convênio
+                        const convenioId = (m.alunos as any)?.convenio_id;
+                        const valorCheckin = (m.alunos as any)?.convenios?.valor_checkin || 0;
                         const alunoMods = alunoModValores[m.aluno_id] || [];
+                        const modsConvenio = convenioId && valorCheckin > 0 ? (convenioMods[convenioId] || []) : [];
+                        
+                        if (alunoMods.length > 0 && modsConvenio.length > 0) {
+                          // Valor só das modalidades fora do Gympass
+                          const valorFora = alunoMods.filter(am => !modsConvenio.includes(am.mod_id)).reduce((s, am) => s + am.valor, 0);
+                          return valorFora > 0 ? `R$ ${valorFora.toFixed(2)}` : '—';
+                        }
+                        // Sem Gympass: soma todas
                         const valorPlano = alunoMods.length > 0 ? alunoMods.reduce((s, am) => s + am.valor, 0) : Number(m.valor);
                         return `R$ ${valorPlano.toFixed(2)}`;
                       })()}
