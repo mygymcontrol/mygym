@@ -57,7 +57,7 @@ export default function MensalidadesPage() {
     // Buscar todas mensalidades
     const { data } = await supabase
       .from('mensalidades')
-      .select('*, alunos(nome, telefone, email, convenio_id, convenios(nome, valor_checkin))')
+      .select('*, alunos(nome, telefone, email, convenio_id, convenios(nome, valor_checkin, desconto_percentual))')
       .order('data_vencimento', { ascending: false });
 
     if (data) {
@@ -232,9 +232,22 @@ export default function MensalidadesPage() {
 
   // Helper: calcular acréscimo Gympass (check-ins × valor_checkin only for linked modalidades)
   const getCheckinAcrescimo = (m: MensalidadeComAluno) => {
-    const valorCheckin = (m.alunos as any)?.convenios?.valor_checkin || 0;
     const convenioId = (m.alunos as any)?.convenio_id;
-    if (!valorCheckin || valorCheckin <= 0 || !convenioId) return { checkins: 0, acrescimo: 0, valorTotal: m.valor, hasConvenio: false, valorBase: m.valor };
+    const valorCheckin = (m.alunos as any)?.convenios?.valor_checkin || 0;
+    const descontoPct = (m.alunos as any)?.convenios?.desconto_percentual || 0;
+    
+    // Sem convênio
+    if (!convenioId) return { checkins: 0, acrescimo: 0, valorTotal: m.valor, hasConvenio: false, valorBase: m.valor, descontoPct: 0 };
+
+    // Convênio com desconto percentual (ex: Plano Família 10%)
+    if (descontoPct > 0 && valorCheckin <= 0) {
+      const desconto = m.valor * (descontoPct / 100);
+      const valorTotal = m.valor - desconto;
+      return { checkins: 0, acrescimo: 0, valorTotal, hasConvenio: true, valorBase: m.valor, descontoPct };
+    }
+
+    // Convênio com valor por check-in (ex: Gympass)
+    if (valorCheckin <= 0) return { checkins: 0, acrescimo: 0, valorTotal: m.valor, hasConvenio: false, valorBase: m.valor, descontoPct: 0 };
 
     // Get modalidades linked to this convênio
     const modsNoConvenio = convenioMods[convenioId] || [];
@@ -262,7 +275,7 @@ export default function MensalidadesPage() {
     const acrescimo = checkins * valorCheckin;
     const valorTotal = valorBase + acrescimo;
 
-    return { checkins, acrescimo, valorTotal, hasConvenio: true, valorBase };
+    return { checkins, acrescimo, valorTotal, hasConvenio: true, valorBase, descontoPct: 0 };
   };
 
   return (
@@ -355,7 +368,10 @@ export default function MensalidadesPage() {
                     </td>
                     <td className="px-4 py-3 font-medium">
                       {gym.hasConvenio ? (
-                        <span className="text-primary-400 font-bold">R$ {gym.valorTotal.toFixed(2)}</span>
+                        <span className="text-primary-400 font-bold">
+                          R$ {gym.valorTotal.toFixed(2)}
+                          {gym.descontoPct > 0 && <span className="text-xs text-emerald-400 ml-1">(-{gym.descontoPct}%)</span>}
+                        </span>
                       ) : (
                         <span>R$ {Number(m.valor).toFixed(2)}</span>
                       )}

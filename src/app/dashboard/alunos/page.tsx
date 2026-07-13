@@ -407,6 +407,7 @@ export default function AlunosPage() {
                         <p className="font-medium text-dark-100">{aluno.nome}</p>
                         <p className="text-sm text-dark-400">{aluno.telefone}</p>
                         <p className="text-xs text-dark-200">Matrícula: #{aluno.id.slice(-6).toUpperCase()}</p>
+                        {aluno.convenio_id && (() => { const conv = convenios.find(c => c.id === aluno.convenio_id); return conv ? <p className="text-xs text-blue-400">{conv.nome}</p> : null; })()}
                       </td>
                       <td className="px-6 py-4">
                         {mods.length > 0 ? (
