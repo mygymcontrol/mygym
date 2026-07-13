@@ -280,9 +280,9 @@ export default function ConveniosPage() {
                   value={form.valor_checkin}
                   onChange={(e) => setForm({...form, valor_checkin: e.target.value})}
                   className="input-field"
-                  placeholder="Ex: 6.15"
+                  placeholder="Ex: 6.6667"
                   min="0"
-                  step="0.01"
+                  step="0.0001"
                 />
                 <p className="text-xs text-dark-400 mt-1">
                   Cada check-in do aluno abate este valor da mensalidade (ex: Gympass).
