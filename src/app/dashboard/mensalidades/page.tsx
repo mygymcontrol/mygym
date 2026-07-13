@@ -261,11 +261,6 @@ export default function MensalidadesPage() {
       }
     });
 
-    // If no aluno_modalidades data loaded yet, fallback to m.valor
-    if (alunoMods.length === 0) {
-      valorBase = m.valor;
-    }
-
     // Check-ins for gympass portion
     const [ano, mes] = m.data_vencimento.split('-').map(Number);
     const key = `${m.aluno_id}_${ano}-${String(mes).padStart(2, '0')}`;
