@@ -40,6 +40,10 @@ export default function MensalidadesPage() {
 
   // Check-in counts per aluno per month (key: `${aluno_id}_${YYYY-MM}`)
   const [checkinCounts, setCheckinCounts] = useState<Record<string, number>>({});
+  // Convenio -> modalidade_ids linked
+  const [convenioMods, setConvenioMods] = useState<Record<string, string[]>>({});
+  // Aluno -> [{mod_id, valor}] for alunos with convênio
+  const [alunoModValores, setAlunoModValores] = useState<Record<string, {mod_id: string, valor: number}[]>>({});
 
   useEffect(() => {
     loadMensalidades();
@@ -72,6 +76,24 @@ export default function MensalidadesPage() {
 
       // Load check-in counts for alunos with valor_checkin convênio
       await loadCheckinCounts(filtered as any);
+
+      // Load convenio-modalidade links
+      const { data: convMods } = await supabase.from('convenio_modalidades').select('convenio_id, modalidade_id');
+      const grouped: Record<string, string[]> = {};
+      (convMods || []).forEach((cm: any) => {
+        if (!grouped[cm.convenio_id]) grouped[cm.convenio_id] = [];
+        grouped[cm.convenio_id].push(cm.modalidade_id);
+      });
+      setConvenioMods(grouped);
+
+      // Load aluno modalidade values for alunos with convênio
+      const alunoIdsWithConvenio = [...new Set(filtered.filter((m: any) => m.alunos?.convenio_id).map((m: any) => m.aluno_id))];
+      const alunoModMap: Record<string, {mod_id: string, valor: number}[]> = {};
+      for (const alunoId of alunoIdsWithConvenio) {
+        const { data: ams } = await supabase.from('aluno_modalidades').select('modalidade_id, modalidades(valor)').eq('aluno_id', alunoId).eq('status', 'ativa');
+        alunoModMap[alunoId] = (ams || []).map((am: any) => ({ mod_id: am.modalidade_id, valor: Number(am.modalidades?.valor) || 0 }));
+      }
+      setAlunoModValores(alunoModMap);
     }
     setLoading(false);
   };
@@ -208,16 +230,39 @@ export default function MensalidadesPage() {
     return matchStatus && matchSearch && matchConvenio;
   });
 
-  // Helper: calcular acréscimo Gympass (check-ins × valor_checkin)
+  // Helper: calcular acréscimo Gympass (check-ins × valor_checkin only for linked modalidades)
   const getCheckinAcrescimo = (m: MensalidadeComAluno) => {
     const valorCheckin = (m.alunos as any)?.convenios?.valor_checkin || 0;
-    if (!valorCheckin || valorCheckin <= 0) return { checkins: 0, acrescimo: 0, valorTotal: m.valor, hasConvenio: false };
+    const convenioId = (m.alunos as any)?.convenio_id;
+    if (!valorCheckin || valorCheckin <= 0 || !convenioId) return { checkins: 0, acrescimo: 0, valorTotal: m.valor, hasConvenio: false, valorBase: m.valor };
+
+    // Get modalidades linked to this convênio
+    const modsNoConvenio = convenioMods[convenioId] || [];
+
+    // Get aluno's modalidades with values
+    const alunoMods = alunoModValores[m.aluno_id] || [];
+
+    // Calculate: non-gympass mods charge full value, gympass mods charge per check-in
+    let valorBase = 0;
+    alunoMods.forEach(am => {
+      if (!modsNoConvenio.includes(am.mod_id)) {
+        valorBase += am.valor; // Normal charge
+      }
+    });
+
+    // If no aluno_modalidades data loaded yet, fallback to m.valor
+    if (alunoMods.length === 0) {
+      valorBase = m.valor;
+    }
+
+    // Check-ins for gympass portion
     const [ano, mes] = m.data_vencimento.split('-').map(Number);
     const key = `${m.aluno_id}_${ano}-${String(mes).padStart(2, '0')}`;
     const checkins = checkinCounts[key] || 0;
     const acrescimo = checkins * valorCheckin;
-    const valorTotal = m.valor + acrescimo;
-    return { checkins, acrescimo, valorTotal, hasConvenio: true };
+    const valorTotal = valorBase + acrescimo;
+
+    return { checkins, acrescimo, valorTotal, hasConvenio: true, valorBase };
   };
 
   return (
@@ -288,7 +333,11 @@ export default function MensalidadesPage() {
                       )}
                     </td>
                     <td className="px-4 py-3 font-medium text-dark-200">
-                      R$ {Number(m.valor).toFixed(2)}
+                      {gym.hasConvenio ? (
+                        <span title="Valor das modalidades não cobertas pelo convênio">R$ {gym.valorBase.toFixed(2)}</span>
+                      ) : (
+                        <span>R$ {Number(m.valor).toFixed(2)}</span>
+                      )}
                     </td>
                     <td className="px-4 py-3 text-dark-200">
                       {gym.hasConvenio ? (

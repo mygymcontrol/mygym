@@ -4,11 +4,21 @@ import { useEffect, useState } from 'react';
 import { supabase, Convenio } from '@/lib/supabase';
 import DashboardLayout from '@/components/DashboardLayout';
 
+interface Modalidade {
+  id: string;
+  nome: string;
+  valor: number;
+  ativo: boolean;
+}
+
 export default function ConveniosPage() {
   const [convenios, setConvenios] = useState<Convenio[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editing, setEditing] = useState<Convenio | null>(null);
+  const [modalidades, setModalidades] = useState<Modalidade[]>([]);
+  const [convenioModalidades, setConvenioModalidades] = useState<Record<string, string[]>>({}); // convenio_id -> modalidade_ids[]
+  const [selectedMods, setSelectedMods] = useState<string[]>([]); // modalidade_ids selected in the form
 
   const [form, setForm] = useState({
     nome: '',
@@ -20,7 +30,17 @@ export default function ConveniosPage() {
 
   useEffect(() => {
     loadConvenios();
+    loadModalidades();
   }, []);
+
+  const loadModalidades = async () => {
+    const { data } = await supabase
+      .from('modalidades')
+      .select('id, nome, valor, ativo')
+      .eq('ativo', true)
+      .order('nome');
+    if (data) setModalidades(data);
+  };
 
   const loadConvenios = async () => {
     const { data } = await supabase
@@ -29,6 +49,16 @@ export default function ConveniosPage() {
       .order('nome');
     
     if (data) setConvenios(data);
+
+    // Load convenio_modalidades links
+    const { data: convMods } = await supabase.from('convenio_modalidades').select('convenio_id, modalidade_id');
+    const grouped: Record<string, string[]> = {};
+    (convMods || []).forEach((cm: any) => {
+      if (!grouped[cm.convenio_id]) grouped[cm.convenio_id] = [];
+      grouped[cm.convenio_id].push(cm.modalidade_id);
+    });
+    setConvenioModalidades(grouped);
+
     setLoading(false);
   };
 
@@ -43,10 +73,24 @@ export default function ConveniosPage() {
       ativo: form.ativo,
     };
 
+    let convenioId = editing?.id;
+
     if (editing) {
       await supabase.from('convenios').update(payload).eq('id', editing.id);
     } else {
-      await supabase.from('convenios').insert(payload);
+      const { data: inserted } = await supabase.from('convenios').insert(payload).select('id').single();
+      if (inserted) convenioId = inserted.id;
+    }
+
+    // Save convenio_modalidades
+    if (convenioId) {
+      // Delete existing links
+      await supabase.from('convenio_modalidades').delete().eq('convenio_id', convenioId);
+      // Insert selected ones
+      if (selectedMods.length > 0) {
+        const rows = selectedMods.map(modId => ({ convenio_id: convenioId, modalidade_id: modId }));
+        await supabase.from('convenio_modalidades').insert(rows);
+      }
     }
 
     setShowModal(false);
@@ -62,12 +106,14 @@ export default function ConveniosPage() {
       descricao: convenio.descricao || '',
       ativo: convenio.ativo,
     });
+    setSelectedMods(convenioModalidades[convenio.id] || []);
     setShowModal(true);
   };
 
   const handleNew = () => {
     setEditing(null);
     setForm({ nome: '', desconto_percentual: '', valor_checkin: '', descricao: '', ativo: true });
+    setSelectedMods([]);
     setShowModal(true);
   };
 
@@ -122,6 +168,11 @@ export default function ConveniosPage() {
                   <h3 className="font-semibold text-dark-100">{convenio.nome}</h3>
                   {convenio.descricao && (
                     <p className="text-sm text-dark-400">{convenio.descricao}</p>
+                  )}
+                  {convenioModalidades[convenio.id]?.length > 0 && (
+                    <p className="text-xs text-emerald-400 mt-1">
+                      Modalidades: {convenioModalidades[convenio.id].map(modId => modalidades.find(m => m.id === modId)?.nome).filter(Boolean).join(', ')}
+                    </p>
                   )}
                 </div>
               </div>
@@ -259,6 +310,40 @@ export default function ConveniosPage() {
                 />
                 <label htmlFor="ativo" className="text-sm text-dark-200">Convênio ativo</label>
               </div>
+
+              {/* Modalidades vinculadas */}
+              {modalidades.length > 0 && (
+                <div>
+                  <label className="block text-sm font-medium text-dark-200 mb-2">
+                    Modalidades vinculadas ao convênio
+                  </label>
+                  <p className="text-xs text-dark-400 mb-2">
+                    Modalidades selecionadas serão cobradas por check-in (não o valor fixo do plano).
+                  </p>
+                  <div className="space-y-2 max-h-40 overflow-y-auto border border-dark-700 rounded-lg p-3">
+                    {modalidades.map(mod => (
+                      <div key={mod.id} className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          id={`mod-${mod.id}`}
+                          checked={selectedMods.includes(mod.id)}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setSelectedMods([...selectedMods, mod.id]);
+                            } else {
+                              setSelectedMods(selectedMods.filter(id => id !== mod.id));
+                            }
+                          }}
+                          className="rounded"
+                        />
+                        <label htmlFor={`mod-${mod.id}`} className="text-sm text-dark-200">
+                          {mod.nome} <span className="text-dark-400">(R$ {Number(mod.valor).toFixed(2)})</span>
+                        </label>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               <div className="flex justify-end gap-3 pt-4">
                 <button type="button" onClick={() => setShowModal(false)} className="btn-secondary">
