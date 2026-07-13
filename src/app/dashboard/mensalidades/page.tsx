@@ -315,7 +315,8 @@ export default function MensalidadesPage() {
               <tr>
                 <th className="px-4 py-3"><input type="checkbox" onChange={selectAll} checked={selectedIds.length === filteredMensalidades.length && filteredMensalidades.length > 0} className="rounded" /></th>
                 <th className="text-left px-4 py-3 text-xs font-medium text-dark-400 uppercase">Aluno</th>
-                <th className="text-left px-4 py-3 text-xs font-medium text-dark-400 uppercase">Valor</th>
+                <th className="text-left px-4 py-3 text-xs font-medium text-dark-400 uppercase">Plano</th>
+                <th className="text-left px-4 py-3 text-xs font-medium text-dark-400 uppercase">Desconto</th>
                 <th className="text-left px-4 py-3 text-xs font-medium text-dark-400 uppercase">Check-ins</th>
                 <th className="text-left px-4 py-3 text-xs font-medium text-dark-400 uppercase">Gympass</th>
                 <th className="text-left px-4 py-3 text-xs font-medium text-dark-400 uppercase">Total</th>
@@ -327,9 +328,9 @@ export default function MensalidadesPage() {
             </thead>
             <tbody className="divide-y divide-dark-100">
               {loading ? (
-                <tr><td colSpan={10} className="px-6 py-8 text-center text-dark-400">Carregando...</td></tr>
+                <tr><td colSpan={11} className="px-6 py-8 text-center text-dark-400">Carregando...</td></tr>
               ) : filteredMensalidades.length === 0 ? (
-                <tr><td colSpan={10} className="px-6 py-8 text-center text-dark-400">Nenhuma mensalidade encontrada</td></tr>
+                <tr><td colSpan={11} className="px-6 py-8 text-center text-dark-400">Nenhuma mensalidade encontrada</td></tr>
               ) : (
                 filteredMensalidades.map((m) => {
                   const gym = getCheckinAcrescimo(m);
@@ -344,11 +345,24 @@ export default function MensalidadesPage() {
                       )}
                     </td>
                     <td className="px-4 py-3 font-medium text-dark-200">
-                      {gym.hasConvenio ? (
-                        <span title="Valor das modalidades não cobertas pelo convênio">R$ {gym.valorBase.toFixed(2)}</span>
-                      ) : (
-                        <span>R$ {Number(m.valor).toFixed(2)}</span>
-                      )}
+                      {(() => {
+                        // Valor cheio do plano (soma das modalidades sem desconto)
+                        const alunoMods = alunoModValores[m.aluno_id] || [];
+                        const valorPlano = alunoMods.length > 0 ? alunoMods.reduce((s, am) => s + am.valor, 0) : Number(m.valor);
+                        return `R$ ${valorPlano.toFixed(2)}`;
+                      })()}
+                    </td>
+                    <td className="px-4 py-3 text-dark-200">
+                      {(() => {
+                        const descontoPct = (m.alunos as any)?.convenios?.desconto_percentual || 0;
+                        if (descontoPct > 0) {
+                          const alunoMods = alunoModValores[m.aluno_id] || [];
+                          const valorPlano = alunoMods.length > 0 ? alunoMods.reduce((s, am) => s + am.valor, 0) : Number(m.valor);
+                          const desconto = valorPlano * (descontoPct / 100);
+                          return <span className="text-red-400">-R$ {desconto.toFixed(2)} ({descontoPct}%)</span>;
+                        }
+                        return <span className="text-dark-500">—</span>;
+                      })()}
                     </td>
                     <td className="px-4 py-3 text-dark-200">
                       {gym.hasConvenio ? (
@@ -365,14 +379,7 @@ export default function MensalidadesPage() {
                       )}
                     </td>
                     <td className="px-4 py-3 font-medium">
-                      {gym.hasConvenio ? (
-                        <span className="text-primary-400 font-bold">
-                          R$ {gym.valorTotal.toFixed(2)}
-                          {gym.descontoPct > 0 && <span className="text-xs text-emerald-400 ml-1">(-{gym.descontoPct}%)</span>}
-                        </span>
-                      ) : (
-                        <span>R$ {Number(m.valor).toFixed(2)}</span>
-                      )}
+                      <span className="text-primary-400 font-bold">R$ {Number(m.valor + (gym.hasConvenio ? gym.acrescimo : 0)).toFixed(2)}</span>
                     </td>
                     <td className="px-4 py-3 text-dark-200">{formatDate(m.data_vencimento)}</td>
                     <td className="px-4 py-3"><span className={`badge-${m.status === 'pago' ? 'pago' : m.status === 'atrasado' ? 'inadimplente' : 'pendente'}`}>{m.status === 'pendente' ? 'A vencer' : m.status === 'pago' ? 'Pago' : m.status}</span></td>
