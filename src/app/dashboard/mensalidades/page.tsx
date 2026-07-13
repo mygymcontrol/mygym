@@ -237,16 +237,16 @@ export default function MensalidadesPage() {
     return matchStatus && matchSearch && matchConvenio;
   });
 
-  // Helper: calcular acréscimo Gympass e desconto Plano Família - v2
+  // Helper: calcular acréscimo Gympass e desconto Plano Família - v3
   const getCheckinAcrescimo = (m: MensalidadeComAluno) => {
     const convenioId = (m.alunos as any)?.convenio_id;
     const valorCheckin = (m.alunos as any)?.convenios?.valor_checkin || 0;
     const descontoPct = (m.alunos as any)?.convenios?.desconto_percentual || 0;
     
-    // Sem convênio
+    // Sem convênio → Total = m.valor (valor gerado pela renovação)
     if (!convenioId) return { checkins: 0, acrescimo: 0, valorTotal: m.valor, hasConvenio: false, valorBase: m.valor, descontoPct: 0 };
 
-    // Convênio com desconto percentual (ex: Plano Família 10%) - calcular valor com desconto
+    // Plano Família (desconto percentual, sem check-in) → Total = soma modalidades - desconto%
     if (descontoPct > 0 && valorCheckin <= 0) {
       const alunoMods = alunoModValores[m.aluno_id] || [];
       const valorPlano = alunoMods.length > 0 ? alunoMods.reduce((s, am) => s + am.valor, 0) : Number(m.valor);
@@ -254,31 +254,44 @@ export default function MensalidadesPage() {
       return { checkins: 0, acrescimo: 0, valorTotal: valorComDesconto, hasConvenio: true, valorBase: valorPlano, descontoPct };
     }
 
-    // Convênio com valor por check-in (ex: Gympass)
+    // Gympass (valor por check-in)
     if (valorCheckin <= 0) return { checkins: 0, acrescimo: 0, valorTotal: m.valor, hasConvenio: false, valorBase: m.valor, descontoPct: 0 };
 
-    // Get modalidades linked to this convênio
+    // Get modalidades linked to this convênio (cobertas pelo Gympass)
     const modsNoConvenio = convenioMods[convenioId] || [];
 
     // Get aluno's modalidades with values
     const alunoMods = alunoModValores[m.aluno_id] || [];
 
-    // Calculate: non-gympass mods charge full value, gympass mods charge per check-in
-    let valorBase = 0;
-    alunoMods.forEach(am => {
-      if (!modsNoConvenio.includes(am.mod_id)) {
-        valorBase += am.valor; // Normal charge
-      }
-    });
-
-    // Check-ins for gympass portion
+    // Check-ins do mês
     const [ano, mes] = m.data_vencimento.split('-').map(Number);
     const key = `${m.aluno_id}_${ano}-${String(mes).padStart(2, '0')}`;
     const checkins = checkinCounts[key] || 0;
     const acrescimo = checkins * valorCheckin;
-    const valorTotal = valorBase + acrescimo;
 
-    return { checkins, acrescimo, valorTotal, hasConvenio: true, valorBase, descontoPct: 0 };
+    // Se não tem dados de modalidades, assume Gympass puro → Total = apenas check-ins
+    if (alunoMods.length === 0 || modsNoConvenio.length === 0) {
+      return { checkins, acrescimo, valorTotal: acrescimo, hasConvenio: true, valorBase: 0, descontoPct: 0 };
+    }
+
+    // Calcular valor das modalidades NÃO cobertas pelo Gympass (cobradas valor cheio)
+    let valorBase = 0;
+    let todasCobertas = true;
+    alunoMods.forEach(am => {
+      if (!modsNoConvenio.includes(am.mod_id)) {
+        // Modalidade NÃO está no Gympass → cobra valor fixo
+        valorBase += am.valor;
+      }
+    });
+    
+    // Verificar se TODAS as modalidades do aluno estão no Gympass
+    todasCobertas = alunoMods.every(am => modsNoConvenio.includes(am.mod_id));
+
+    // Se todas cobertas → Total = apenas check-ins
+    // Se tem modalidade extra → Total = valor das extras + check-ins
+    const valorTotal = todasCobertas ? acrescimo : valorBase + acrescimo;
+
+    return { checkins, acrescimo, valorTotal, hasConvenio: true, valorBase: todasCobertas ? 0 : valorBase, descontoPct: 0 };
   };
 
   return (
@@ -394,7 +407,7 @@ export default function MensalidadesPage() {
                       )}
                     </td>
                     <td className="px-4 py-3 font-medium">
-                      <span className="text-primary-400 font-bold">R$ {Number(m.valor + (gym.hasConvenio ? gym.acrescimo : 0)).toFixed(2)}</span>
+                      <span className="text-primary-400 font-bold">R$ {gym.hasConvenio ? gym.valorTotal.toFixed(2) : Number(m.valor).toFixed(2)}</span>
                     </td>
                     <td className="px-4 py-3 text-dark-200">{formatDate(m.data_vencimento)}</td>
                     <td className="px-4 py-3"><span className={`badge-${m.status === 'pago' ? 'pago' : m.status === 'atrasado' ? 'inadimplente' : 'pendente'}`}>{m.status === 'pendente' ? 'A vencer' : m.status === 'pago' ? 'Pago' : m.status}</span></td>
