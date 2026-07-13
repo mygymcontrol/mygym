@@ -28,6 +28,7 @@ const CATEGORIAS = [
 
 export default function FinanceiroPage() {
   const [movimentacoes, setMovimentacoes] = useState<Movimentacao[]>([]);
+  const [receitaMensalidades, setReceitaMensalidades] = useState(0);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [filterMes, setFilterMes] = useState(getMesAtual());
@@ -69,6 +70,17 @@ export default function FinanceiroPage() {
 
     const { data } = await query;
     if (data) setMovimentacoes(data);
+
+    // Buscar receita de mensalidades pagas no período
+    const { data: mensPagas } = await supabase
+      .from('mensalidades')
+      .select('valor')
+      .eq('status', 'pago')
+      .gte('data_pagamento', startDate)
+      .lte('data_pagamento', endDate);
+    const totalMens = (mensPagas || []).reduce((sum, m) => sum + Number(m.valor), 0);
+    setReceitaMensalidades(totalMens);
+
     setLoading(false);
   };
 
@@ -118,23 +130,28 @@ export default function FinanceiroPage() {
     .filter((m) => m.tipo === 'saida')
     .reduce((acc, m) => acc + Number(m.valor), 0);
 
-  const saldo = totalEntradas - totalSaidas;
+  const receitaTotal = receitaMensalidades + totalEntradas;
+  const saldo = receitaTotal - totalSaidas;
 
   return (
     <DashboardLayout activeMenu="financeiro" title="Financeiro">
       {/* Cards Resumo */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         <div className="card p-4 border-l-4 border-green-500">
-          <p className="text-sm text-dark-400">Total Entradas</p>
-          <p className="text-2xl font-bold text-green-400">{formatMoney(totalEntradas)}</p>
+          <p className="text-sm text-dark-400">Receita Mensalidades</p>
+          <p className="text-xl font-bold text-green-400">{formatMoney(receitaMensalidades)}</p>
+        </div>
+        <div className="card p-4 border-l-4 border-emerald-500">
+          <p className="text-sm text-dark-400">Entradas Manuais</p>
+          <p className="text-xl font-bold text-emerald-400">{formatMoney(totalEntradas)}</p>
         </div>
         <div className="card p-4 border-l-4 border-red-500">
-          <p className="text-sm text-dark-400">Total Saídas</p>
-          <p className="text-2xl font-bold text-red-400">{formatMoney(totalSaidas)}</p>
+          <p className="text-sm text-dark-400">Saídas</p>
+          <p className="text-xl font-bold text-red-400">{formatMoney(totalSaidas)}</p>
         </div>
         <div className="card p-4 border-l-4 border-blue-500">
-          <p className="text-sm text-dark-400">Saldo</p>
-          <p className={`text-2xl font-bold ${saldo >= 0 ? 'text-blue-400' : 'text-red-400'}`}>{formatMoney(saldo)}</p>
+          <p className="text-sm text-dark-400">Saldo Total</p>
+          <p className={`text-xl font-bold ${saldo >= 0 ? 'text-blue-400' : 'text-red-400'}`}>{formatMoney(saldo)}</p>
         </div>
       </div>
 
