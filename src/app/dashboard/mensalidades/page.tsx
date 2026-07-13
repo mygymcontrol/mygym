@@ -237,7 +237,7 @@ export default function MensalidadesPage() {
     return matchStatus && matchSearch && matchConvenio;
   });
 
-  // Helper: calcular acréscimo Gympass (check-ins × valor_checkin only for linked modalidades)
+  // Helper: calcular acréscimo Gympass e desconto Plano Família - v2
   const getCheckinAcrescimo = (m: MensalidadeComAluno) => {
     const convenioId = (m.alunos as any)?.convenio_id;
     const valorCheckin = (m.alunos as any)?.convenios?.valor_checkin || 0;
