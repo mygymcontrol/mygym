@@ -39,6 +39,7 @@ export default function AlunosPage() {
   const [filterPlano, setFilterPlano] = useState('todos');
   const [filterConvenio, setFilterConvenio] = useState('todos');
   const [selectedMods, setSelectedMods] = useState<string[]>([]);
+  const [convenioModsMap, setConvenioModsMap] = useState<Record<string, string[]>>({});
 
   const [form, setForm] = useState({
     nome: '', email: '', telefone: '', cpf: '', data_nascimento: '',
@@ -53,14 +54,20 @@ export default function AlunosPage() {
   useEffect(() => { loadAll(); }, []);
 
   const loadAll = async () => {
-    const [{ data: al }, { data: conv }, { data: mods }] = await Promise.all([
+    const [{ data: al }, { data: conv }, { data: mods }, { data: convMods }] = await Promise.all([
       supabase.from('alunos').select('*, aluno_modalidades(id, modalidade_id, status, modalidades(nome, valor)), matriculas(id, status, valor_final, data_inicio, planos(nome))').order('nome'),
       supabase.from('convenios').select('*').eq('ativo', true),
       supabase.from('modalidades').select('*, planos(nome)').eq('ativo', true).order('nome'),
+      supabase.from('convenio_modalidades').select('convenio_id, modalidade_id'),
     ]);
     if (al) setAlunos(al as any);
     if (conv) setConvenios(conv);
     if (mods) setModalidades(mods);
+    if (convMods) {
+      const grouped: Record<string, string[]> = {};
+      convMods.forEach((cm: any) => { if (!grouped[cm.convenio_id]) grouped[cm.convenio_id] = []; grouped[cm.convenio_id].push(cm.modalidade_id); });
+      setConvenioModsMap(grouped);
+    }
     setLoading(false);
   };
 
@@ -414,7 +421,32 @@ export default function AlunosPage() {
                         {matAtiva?.data_inicio ? formatDate(matAtiva.data_inicio) : '—'}
                       </td>
                       <td className="px-6 py-4 text-sm text-primary-400 font-medium">
-                        {mods.length > 0 ? `R$ ${mods.reduce((sum: number, am: any) => sum + (Number(am.modalidades?.valor) || 0), 0).toFixed(2)}` : '—'}
+                        {(() => {
+                          if (mods.length === 0) return '—';
+                          const convenioId = aluno.convenio_id;
+                          const convModIds = convenioId ? (convenioModsMap[convenioId] || []) : [];
+                          const conv = convenioId ? convenios.find(c => c.id === convenioId) : null;
+                          const valorCheckin = conv ? Number((conv as any).valor_checkin) || 0 : 0;
+                          
+                          if (convModIds.length === 0 || valorCheckin === 0) {
+                            // Sem Gympass: mostra soma normal
+                            return `R$ ${mods.reduce((sum: number, am: any) => sum + (Number(am.modalidades?.valor) || 0), 0).toFixed(2)}`;
+                          }
+                          
+                          // Com Gympass: soma só modalidades fora do convênio
+                          const valorFixo = mods.reduce((sum: number, am: any) => {
+                            if (convModIds.includes(am.modalidade_id)) return sum; // Gympass - não soma
+                            return sum + (Number(am.modalidades?.valor) || 0);
+                          }, 0);
+                          const modsGympass = mods.filter((am: any) => convModIds.includes(am.modalidade_id));
+                          
+                          if (valorFixo > 0 && modsGympass.length > 0) {
+                            return <span>R$ {valorFixo.toFixed(2)} <span className="text-xs text-emerald-400">+ Gympass</span></span>;
+                          } else if (modsGympass.length > 0) {
+                            return <span className="text-emerald-400">Gympass (por check-in)</span>;
+                          }
+                          return `R$ ${valorFixo.toFixed(2)}`;
+                        })()}
                       </td>
                       <td className="px-6 py-4"><span className={statusBadge(aluno.status)}>{aluno.status}</span></td>
                       <td className="px-6 py-4 text-right space-x-2" onClick={(e) => e.stopPropagation()}>
