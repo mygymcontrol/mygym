@@ -132,23 +132,56 @@ export default function AlunosPage() {
       const cpfDigitos = form.cpf.replace(/\D/g, '');
       const senhaTemp = cpfDigitos.length >= 6 ? cpfDigitos.slice(0, 6) : 'Gym123';
 
-      // Criar usuário auth
+      // Criar usuário auth via API server-side (garante que funciona em produção)
       let userId: string | null = null;
-      const { data: authUser, error: authError } = await supabaseAdmin.auth.admin.createUser({
-        email: form.email, password: senhaTemp, email_confirm: true,
-        user_metadata: { nome: form.nome, role: 'aluno' },
-      });
-      if (!authError && authUser?.user) {
-        userId = authUser.user.id;
-      } else if (authError?.message?.includes('already been registered')) {
-        // User já existe, buscar o ID e atualizar a senha
-        const { data: existingUsers } = await supabaseAdmin.auth.admin.listUsers();
-        const existing = existingUsers?.users?.find((u: any) => u.email === form.email);
-        if (existing) {
-          userId = existing.id;
-          // Atualizar senha para o CPF do novo cadastro
-          await supabaseAdmin.auth.admin.updateUserById(existing.id, { password: senhaTemp });
+      try {
+        const resp = await fetch('/api/create-aluno-auth', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: form.email, nome: form.nome, cpf: form.cpf }),
+        });
+        const result = await resp.json();
+        if (result.userId) {
+          userId = result.userId;
+        } else {
+          // Fallback: tentar via supabaseAdmin direto (caso API falhe)
+          const { data: authUser, error: authError } = await supabaseAdmin.auth.admin.createUser({
+            email: form.email, password: senhaTemp, email_confirm: true,
+            user_metadata: { nome: form.nome, role: 'aluno' },
+          });
+          if (!authError && authUser?.user) {
+            userId = authUser.user.id;
+          } else if (authError?.message?.includes('already been registered')) {
+            const { data: existingUsers } = await supabaseAdmin.auth.admin.listUsers();
+            const existing = existingUsers?.users?.find((u: any) => u.email === form.email);
+            if (existing) {
+              userId = existing.id;
+              await supabaseAdmin.auth.admin.updateUserById(existing.id, { password: senhaTemp });
+            }
+          }
         }
+      } catch (apiErr) {
+        // Fallback se API não está disponível
+        const { data: authUser, error: authError } = await supabaseAdmin.auth.admin.createUser({
+          email: form.email, password: senhaTemp, email_confirm: true,
+          user_metadata: { nome: form.nome, role: 'aluno' },
+        });
+        if (!authError && authUser?.user) {
+          userId = authUser.user.id;
+        } else if (authError?.message?.includes('already been registered')) {
+          const { data: existingUsers } = await supabaseAdmin.auth.admin.listUsers();
+          const existing = existingUsers?.users?.find((u: any) => u.email === form.email);
+          if (existing) {
+            userId = existing.id;
+            await supabaseAdmin.auth.admin.updateUserById(existing.id, { password: senhaTemp });
+          }
+        }
+      }
+
+      // ALERTA: se não conseguiu criar conta, avisar o admin
+      if (!userId) {
+        const continuar = confirm('⚠️ Não foi possível criar a conta de login para este aluno. O aluno será cadastrado mas NÃO conseguirá acessar o portal.\n\nDeseja continuar mesmo assim?');
+        if (!continuar) return;
       }
 
       // Criar aluno
