@@ -109,6 +109,23 @@ export default function AlunosPage() {
       const { error } = await supabase.from('alunos').update(alunoPayload).eq('id', editingAluno.id);
       if (error) { alert('Erro ao salvar: ' + error.message); return; }
       
+      // Se o email mudou, atualizar no auth e profile também
+      if (form.email !== editingAluno.email) {
+        try {
+          const resp = await fetch('/api/sync-aluno-email', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ aluno_id: editingAluno.id, new_email: form.email }),
+          });
+          const result = await resp.json();
+          if (!result.success) {
+            console.warn('Aviso: não foi possível sincronizar email no auth:', result.error);
+          }
+        } catch (e) {
+          console.warn('Aviso: erro ao sincronizar email:', e);
+        }
+      }
+      
       // Atualizar ou criar matrícula com data_inicio
       if (form.data_inicio) {
         const { data: matExist } = await supabase.from('matriculas').select('id').eq('aluno_id', editingAluno.id).in('status', ['ativa', 'suspensa']).single();
