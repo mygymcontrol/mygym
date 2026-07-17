@@ -319,9 +319,19 @@ export default function AlunosPage() {
   const atualizarValorMensalidade = async (alunoId: string) => {
     // Recalcular valor baseado nas modalidades ativas
     const { data: mods } = await supabase.from('aluno_modalidades').select('modalidade_id, modalidades(valor)').eq('aluno_id', alunoId).eq('status', 'ativa');
-    const novoValor = (mods || []).reduce((sum: number, m: any) => sum + (Number(m.modalidades?.valor) || 0), 0);
-    // Atualizar mensalidades pendentes
-    await supabase.from('mensalidades').update({ valor: novoValor }).eq('aluno_id', alunoId).eq('status', 'pendente');
+    let novoValor = (mods || []).reduce((sum: number, m: any) => sum + (Number(m.modalidades?.valor) || 0), 0);
+    
+    // Aplicar desconto do convênio se houver (ex: Plano Família 10%)
+    const { data: alunoData } = await supabase.from('alunos').select('convenio_id').eq('id', alunoId).single();
+    if (alunoData?.convenio_id) {
+      const conv = convenios.find(c => c.id === alunoData.convenio_id);
+      if (conv && conv.desconto_percentual > 0 && !(conv.valor_checkin > 0)) {
+        novoValor = novoValor * (1 - conv.desconto_percentual / 100);
+      }
+    }
+    
+    // Atualizar mensalidades pendentes E atrasadas (não mexer nas pagas)
+    await supabase.from('mensalidades').update({ valor: novoValor }).eq('aluno_id', alunoId).in('status', ['pendente', 'atrasado']);
   };
 
   const handleAddModalidade = async (alunoId: string, modId: string) => {
