@@ -222,6 +222,43 @@ export default function MensalidadesPage() {
     setSelectedIds([]);
   };
 
+  const handleEstorno = async (m: MensalidadeComAluno) => {
+    const motivo = prompt(`Deseja estornar o pagamento de ${m.alunos?.nome}?\n\nValor: R$ ${Number(m.valor).toFixed(2)}\nData pagamento: ${m.data_pagamento ? formatDate(m.data_pagamento) : '—'}\n\nDigite o motivo do estorno:`);
+    if (!motivo) return;
+
+    // Reverter status para pendente/atrasado
+    const hoje = new Date().toISOString().split('T')[0];
+    const novoStatus = m.data_vencimento < hoje ? 'atrasado' : 'pendente';
+
+    const { error } = await supabase.from('mensalidades').update({
+      status: novoStatus,
+      data_pagamento: null,
+      forma_pagamento: null,
+      comprovante_url: null,
+      observacoes: `ESTORNO: ${motivo} | Pag. anterior: ${m.data_pagamento || '—'} via ${m.forma_pagamento || '—'}${m.observacoes ? ' | Obs anterior: ' + m.observacoes : ''}`,
+    }).eq('id', m.id);
+
+    if (error) {
+      alert('Erro ao estornar: ' + error.message);
+      return;
+    }
+
+    // Registrar log do estorno
+    const userName = localStorage.getItem('user_name') || 'Admin';
+    await supabase.from('financeiro').insert({
+      academia_id: localStorage.getItem('academia_id'),
+      tipo: 'saida',
+      valor: Number(m.valor),
+      data: hoje,
+      categoria: 'Estorno',
+      descricao: `Estorno mensalidade - ${m.alunos?.nome} - ${motivo}`,
+      registrado_por: userName,
+    });
+
+    alert(`✅ Pagamento estornado!\n\nAluno: ${m.alunos?.nome}\nStatus: ${novoStatus === 'atrasado' ? 'Atrasado' : 'Pendente'}`);
+    loadMensalidades();
+  };
+
   const toggleSelect = (id: string) => setSelectedIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
   const selectAll = () => {
     const filtered = filteredMensalidades.map(m => m.id);
@@ -417,11 +454,13 @@ export default function MensalidadesPage() {
                       ) : <span className="text-dark-200 text-sm">—</span>}
                     </td>
                     <td className="px-4 py-3 text-right space-x-1">
-                      {m.status !== 'pago' && (
+                      {m.status !== 'pago' ? (
                         <>
                           <button onClick={() => openPagamento(m)} className="text-green-600 hover:text-green-700 text-sm font-medium">💰 Confirmar Pagamento</button>
                           <button onClick={() => enviarWhatsApp(m)} className="text-green-600 hover:text-green-700 text-sm font-medium">📲</button>
                         </>
+                      ) : (
+                        <button onClick={() => handleEstorno(m)} className="text-red-400 hover:text-red-300 text-sm font-medium">↩️ Estornar</button>
                       )}
                     </td>
                   </tr>
