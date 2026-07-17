@@ -457,7 +457,7 @@ export default function MensalidadesPage() {
                       {m.status !== 'pago' ? (
                         <>
                           <button onClick={() => openPagamento(m)} className="text-green-600 hover:text-green-700 text-sm font-medium">💰 Confirmar Pagamento</button>
-                          <button onClick={() => enviarWhatsApp(m)} className="text-green-600 hover:text-green-700 text-sm font-medium">📲</button>
+                          <button onClick={() => enviarWhatsApp(m)} className="text-green-600 hover:text-green-700 text-2xl">📲</button>
                         </>
                       ) : (
                         <button onClick={() => handleEstorno(m)} className="text-red-400 hover:text-red-300 text-sm font-medium">↩️ Estornar</button>
