@@ -351,6 +351,7 @@ export default function MensalidadesPage() {
             <option value="pendente">A vencer</option>
             <option value="atrasado">Atrasadas</option>
             <option value="pago">Pagas</option>
+            <option value="suspenso">Suspensos</option>
             <option value="cancelado">Canceladas</option>
           </select>
         </div>
@@ -447,7 +448,7 @@ export default function MensalidadesPage() {
                       <span className="text-primary-400 font-bold">R$ {gym.hasConvenio ? gym.valorTotal.toFixed(2) : Number(m.valor).toFixed(2)}</span>
                     </td>
                     <td className="px-4 py-3 text-dark-200">{formatDate(m.data_vencimento)}</td>
-                    <td className="px-4 py-3"><span className={`badge-${m.status === 'pago' ? 'pago' : m.status === 'atrasado' ? 'inadimplente' : 'pendente'}`}>{m.status === 'pendente' ? 'A vencer' : m.status === 'pago' ? 'Pago' : m.status}</span></td>
+                    <td className="px-4 py-3"><span className={`badge-${m.status === 'pago' ? 'pago' : m.status === 'atrasado' ? 'inadimplente' : m.status === 'suspenso' ? 'suspenso' : 'pendente'}`}>{m.status === 'pendente' ? 'A vencer' : m.status === 'pago' ? 'Pago' : m.status === 'suspenso' ? 'Suspenso' : m.status}</span></td>
                     <td className="px-4 py-3">
                       {m.comprovante_url ? (
                         <a href={m.comprovante_url} target="_blank" className="text-primary-600 text-sm underline">Ver</a>

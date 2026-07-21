@@ -83,7 +83,7 @@ export interface Mensalidade {
   valor: number;
   data_vencimento: string;
   data_pagamento?: string;
-  status: 'pendente' | 'pago' | 'atrasado' | 'cancelado';
+  status: 'pendente' | 'pago' | 'atrasado' | 'cancelado' | 'suspenso';
   forma_pagamento?: 'pix' | 'transferencia' | 'dinheiro' | 'cartao';
   comprovante_url?: string;
   observacoes?: string;
