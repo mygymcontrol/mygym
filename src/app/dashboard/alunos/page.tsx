@@ -96,6 +96,7 @@ export default function AlunosPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const academiaId = localStorage.getItem('academia_id');
     const alunoPayload = {
       nome: form.nome, email: form.email, telefone: form.telefone,
       cpf: form.cpf || null, data_nascimento: form.data_nascimento || null,
@@ -103,6 +104,7 @@ export default function AlunosPage() {
       convenio_id: form.convenio_id || null, observacoes: form.observacoes || null,
       dia_vencimento: parseInt(form.dia_vencimento) || 10,
       treino_hipertrofia: form.treino_hipertrofia,
+      academia_id: academiaId,
     };
 
     if (editingAluno) {
