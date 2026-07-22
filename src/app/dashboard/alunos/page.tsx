@@ -111,21 +111,24 @@ export default function AlunosPage() {
       const { error } = await supabase.from('alunos').update(alunoPayload).eq('id', editingAluno.id);
       if (error) { alert('Erro ao salvar: ' + error.message); return; }
       
-      // Se o email mudou, atualizar no auth e profile também
-      if (form.email !== editingAluno.email) {
-        try {
-          const resp = await fetch('/api/sync-aluno-email', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ aluno_id: editingAluno.id, new_email: form.email }),
-          });
-          const result = await resp.json();
-          if (!result.success) {
-            console.warn('Aviso: não foi possível sincronizar email no auth:', result.error);
-          }
-        } catch (e) {
-          console.warn('Aviso: erro ao sincronizar email:', e);
+      // Sempre sincronizar auth (email + senha baseada no CPF) ao editar
+      try {
+        const resp = await fetch('/api/sync-aluno-email', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            aluno_id: editingAluno.id, 
+            new_email: form.email, 
+            cpf: form.cpf,
+            nome: form.nome,
+          }),
+        });
+        const result = await resp.json();
+        if (!result.success) {
+          alert('⚠️ Dados salvos, mas houve um problema ao sincronizar o login do aluno: ' + (result.error || 'Erro desconhecido'));
         }
+      } catch (e) {
+        alert('⚠️ Dados salvos, mas não foi possível sincronizar o login do aluno. Verifique se o aluno consegue acessar a área.');
       }
       
       // Atualizar ou criar matrícula com data_inicio
