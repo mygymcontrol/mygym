@@ -177,7 +177,7 @@ export default function AlunosPage() {
           userId = result.userId;
         }
       } catch (apiErr) {
-        // API falhou, tentar via supabaseAdmin direto
+        // API falhou
       }
 
       // Fallback: tentar diretamente via supabaseAdmin (service_role no browser)
@@ -190,9 +190,17 @@ export default function AlunosPage() {
           if (!authError && authUser?.user) {
             userId = authUser.user.id;
           } else if (authError?.message?.includes('already been registered') || authError?.message?.includes('already exists')) {
-            // Email já existe — buscar e reusar
-            const { data: listData } = await supabaseAdmin.auth.admin.listUsers();
-            const existing = listData?.users?.find((u: any) => u.email?.toLowerCase() === form.email.toLowerCase());
+            // Email já existe — buscar paginado e reusar
+            let allUsers: any[] = [];
+            let pg = 1;
+            while (true) {
+              const { data: listData } = await supabaseAdmin.auth.admin.listUsers({ page: pg, perPage: 1000 });
+              const users = listData?.users || [];
+              allUsers.push(...users);
+              if (users.length < 1000) break;
+              pg++;
+            }
+            const existing = allUsers.find((u: any) => u.email?.toLowerCase() === form.email.toLowerCase());
             if (existing) {
               userId = existing.id;
               await supabaseAdmin.auth.admin.updateUserById(existing.id, { password: senhaTemp });
@@ -212,16 +220,16 @@ export default function AlunosPage() {
         await supabase.from('profiles').upsert({
           id: userId, email: form.email, nome: form.nome, role: 'aluno', academia_id: academiaId,
         });
-      } else {
-        // Tentar vincular via sync API (cria auth + profile no server-side)
-        try {
-          await fetch('/api/sync-aluno-email', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ aluno_id: novoAluno.id, new_email: form.email, cpf: form.cpf, nome: form.nome }),
-          });
-        } catch (e) { /* ignore */ }
       }
+
+      // SEMPRE chamar sync como garantia final (server-side corrige tudo)
+      try {
+        await fetch('/api/sync-aluno-email', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ aluno_id: novoAluno.id, new_email: form.email, cpf: form.cpf, nome: form.nome }),
+        });
+      } catch (e) { /* ignore */ }
 
       // Vincular modalidades
       if (selectedMods.length > 0) {

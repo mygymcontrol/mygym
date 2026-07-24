@@ -39,9 +39,17 @@ export async function POST(request: Request) {
     if (!authError && authUser?.user) {
       userId = authUser.user.id;
     } else if (authError?.message?.includes('already been registered') || authError?.message?.includes('already exists')) {
-      // Usuário já existe — buscar ID e atualizar senha
-      const { data: existingUsers } = await supabaseAdmin.auth.admin.listUsers();
-      const existing = existingUsers?.users?.find((u: any) => u.email === email);
+      // Usuário já existe — buscar ID paginado e atualizar senha
+      let allUsers: any[] = [];
+      let pg = 1;
+      while (true) {
+        const { data: listData } = await supabaseAdmin.auth.admin.listUsers({ page: pg, perPage: 1000 });
+        const users = listData?.users || [];
+        allUsers.push(...users);
+        if (users.length < 1000) break;
+        pg++;
+      }
+      const existing = allUsers.find((u: any) => u.email?.toLowerCase() === email.toLowerCase());
       if (existing) {
         userId = existing.id;
         // Resetar senha para o CPF
