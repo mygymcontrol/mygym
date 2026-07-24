@@ -103,16 +103,19 @@ export default function AlunosPage() {
     const hipertrofiaOriginal = modalidades.find((m: any) => m.nome === 'TREINOS HIPERTROFIA');
     const temHipertrofiaOriginal = hipertrofiaOriginal ? modulosEspeciais.includes(hipertrofiaOriginal.id) : form.treino_hipertrofia;
 
-    const alunoPayload = {
+    const alunoPayload: any = {
       nome: form.nome, email: form.email, telefone: form.telefone,
       cpf: form.cpf || null, data_nascimento: form.data_nascimento || null,
       endereco: form.endereco || null, status: form.status,
       convenio_id: form.convenio_id || null, observacoes: form.observacoes || null,
       dia_vencimento: parseInt(form.dia_vencimento) || 10,
       treino_hipertrofia: temHipertrofiaOriginal,
-      modulos_especiais_ids: modulosEspeciais,
       academia_id: academiaId,
     };
+    // Só incluir modulos_especiais_ids se tiver dados (evita erro se coluna não existe)
+    if (modulosEspeciais.length > 0) {
+      alunoPayload.modulos_especiais_ids = modulosEspeciais;
+    }
 
     if (editingAluno) {
       const { error } = await supabase.from('alunos').update(alunoPayload).eq('id', editingAluno.id);
