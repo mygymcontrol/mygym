@@ -161,7 +161,7 @@ export default function AlunosPage() {
       const cpfDigitos = form.cpf.replace(/\D/g, '');
       const senhaTemp = cpfDigitos.length >= 6 ? cpfDigitos.slice(0, 6) : 'Gym123';
 
-      // Criar usuário auth via API server-side (garante que funciona em produção)
+      // Criar usuário auth via API server-side
       let userId: string | null = null;
       try {
         const resp = await fetch('/api/create-aluno-auth', {
@@ -172,59 +172,52 @@ export default function AlunosPage() {
         const result = await resp.json();
         if (result.userId) {
           userId = result.userId;
-        } else {
-          // Fallback: tentar via supabaseAdmin direto (caso API falhe)
+        }
+      } catch (apiErr) {
+        // API falhou, tentar via supabaseAdmin direto
+      }
+
+      // Fallback: tentar diretamente via supabaseAdmin (service_role no browser)
+      if (!userId) {
+        try {
           const { data: authUser, error: authError } = await supabaseAdmin.auth.admin.createUser({
             email: form.email, password: senhaTemp, email_confirm: true,
             user_metadata: { nome: form.nome, role: 'aluno' },
           });
           if (!authError && authUser?.user) {
             userId = authUser.user.id;
-          } else if (authError?.message?.includes('already been registered')) {
-            const { data: existingUsers } = await supabaseAdmin.auth.admin.listUsers();
-            const existing = existingUsers?.users?.find((u: any) => u.email === form.email);
+          } else if (authError?.message?.includes('already been registered') || authError?.message?.includes('already exists')) {
+            // Email já existe — buscar e reusar
+            const { data: listData } = await supabaseAdmin.auth.admin.listUsers();
+            const existing = listData?.users?.find((u: any) => u.email?.toLowerCase() === form.email.toLowerCase());
             if (existing) {
               userId = existing.id;
               await supabaseAdmin.auth.admin.updateUserById(existing.id, { password: senhaTemp });
             }
           }
-        }
-      } catch (apiErr) {
-        // Fallback se API não está disponível
-        const { data: authUser, error: authError } = await supabaseAdmin.auth.admin.createUser({
-          email: form.email, password: senhaTemp, email_confirm: true,
-          user_metadata: { nome: form.nome, role: 'aluno' },
-        });
-        if (!authError && authUser?.user) {
-          userId = authUser.user.id;
-        } else if (authError?.message?.includes('already been registered')) {
-          const { data: existingUsers } = await supabaseAdmin.auth.admin.listUsers();
-          const existing = existingUsers?.users?.find((u: any) => u.email === form.email);
-          if (existing) {
-            userId = existing.id;
-            await supabaseAdmin.auth.admin.updateUserById(existing.id, { password: senhaTemp });
-          }
-        }
+        } catch (e) { /* ignore */ }
       }
 
-      // ALERTA: se não conseguiu criar conta, avisar o admin
-      if (!userId) {
-        const continuar = confirm('⚠️ Não foi possível criar a conta de login para este aluno. O aluno será cadastrado mas NÃO conseguirá acessar o portal.\n\nDeseja continuar mesmo assim?');
-        if (!continuar) return;
-      }
-
-      // Criar aluno
-      const numeroMatricula = Date.now().toString().slice(-6);
+      // Criar aluno (sempre, mesmo sem userId — será vinculado depois via sync)
       const { data: novoAluno, error: errAluno } = await supabase
         .from('alunos').insert({ ...alunoPayload, user_id: userId }).select().single();
-      if (errAluno || !novoAluno) { alert('Erro: ' + errAluno?.message); return; }
+      if (errAluno || !novoAluno) { alert('Erro ao cadastrar: ' + errAluno?.message); return; }
 
-      // Criar profile para login funcionar
+      // Se conseguiu userId, criar profile
       if (userId) {
         const academiaId = localStorage.getItem('academia_id');
         await supabase.from('profiles').upsert({
           id: userId, email: form.email, nome: form.nome, role: 'aluno', academia_id: academiaId,
         });
+      } else {
+        // Tentar vincular via sync API (cria auth + profile no server-side)
+        try {
+          await fetch('/api/sync-aluno-email', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ aluno_id: novoAluno.id, new_email: form.email, cpf: form.cpf, nome: form.nome }),
+          });
+        } catch (e) { /* ignore */ }
       }
 
       // Vincular modalidades
