@@ -24,10 +24,11 @@ export default function PortalAlunoPage() {
   const [matricula, setMatricula] = useState<MatriculaInfo | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Treino Hipertrofia (módulo especial)
+  // Módulos Especiais (Treinos Hipertrofia e cópias)
   const [treinoHipertrofiaAtivo, setTreinoHipertrofiaAtivo] = useState(false);
   const [hipertrofiaMod, setHipertrofiaMod] = useState<any>(null);
   const [hipertrofiaHorarios, setHipertrofiaHorarios] = useState<any[]>([]);
+  const [modulosEspeciais, setModulosEspeciais] = useState<any[]>([]); // [{id, nome, horarios}]
 
   // Treino tracker
   const [treinoAberto, setTreinoAberto] = useState<string | null>(null); // modalidade_id
@@ -78,23 +79,23 @@ export default function PortalAlunoPage() {
 
     // Buscar aluno
     let alunoData = null;
-    const { data: byUserId } = await supabase.from('alunos').select('id, nome, email, status, treino_hipertrofia').eq('user_id', user.id).single();
+    const { data: byUserId } = await supabase.from('alunos').select('id, nome, email, status, treino_hipertrofia, modulos_especiais_ids').eq('user_id', user.id).single();
     if (byUserId) {
       alunoData = byUserId;
     } else {
       // Fallback por email (pode falhar por RLS se user_id não está vinculado)
-      const { data: byEmail } = await supabase.from('alunos').select('id, nome, email, status, treino_hipertrofia').eq('email', user.email).single();
+      const { data: byEmail } = await supabase.from('alunos').select('id, nome, email, status, treino_hipertrofia, modulos_especiais_ids').eq('email', user.email).single();
       if (byEmail) alunoData = byEmail;
     }
 
-    // Fallback: se a query com treino_hipertrofia falhar (coluna não existe ainda)
+    // Fallback: se a query com modulos_especiais_ids falhar (coluna não existe ainda)
     if (!alunoData) {
-      const { data: byUserId2 } = await supabase.from('alunos').select('id, nome, email, status').eq('user_id', user.id).single();
+      const { data: byUserId2 } = await supabase.from('alunos').select('id, nome, email, status, treino_hipertrofia').eq('user_id', user.id).single();
       if (byUserId2) {
-        alunoData = { ...byUserId2, treino_hipertrofia: false };
+        alunoData = { ...byUserId2, modulos_especiais_ids: [] };
       } else {
-        const { data: byEmail2 } = await supabase.from('alunos').select('id, nome, email, status').eq('email', user.email).single();
-        if (byEmail2) alunoData = { ...byEmail2, treino_hipertrofia: false };
+        const { data: byEmail2 } = await supabase.from('alunos').select('id, nome, email, status, treino_hipertrofia').eq('email', user.email).single();
+        if (byEmail2) alunoData = { ...byEmail2, modulos_especiais_ids: [] };
       }
     }
 
@@ -109,11 +110,11 @@ export default function PortalAlunoPage() {
         const result = await resp.json();
         if (result.isAluno) {
           // Tentar buscar de novo após fix
-          const { data: retryData } = await supabase.from('alunos').select('id, nome, email, status, treino_hipertrofia').eq('user_id', user.id).single();
+          const { data: retryData } = await supabase.from('alunos').select('id, nome, email, status, treino_hipertrofia, modulos_especiais_ids').eq('user_id', user.id).single();
           if (retryData) alunoData = retryData;
           else {
-            const { data: retryData2 } = await supabase.from('alunos').select('id, nome, email, status').eq('user_id', user.id).single();
-            if (retryData2) alunoData = { ...retryData2, treino_hipertrofia: false };
+            const { data: retryData2 } = await supabase.from('alunos').select('id, nome, email, status, treino_hipertrofia').eq('user_id', user.id).single();
+            if (retryData2) alunoData = { ...retryData2, modulos_especiais_ids: [] };
           }
         }
       }
@@ -122,10 +123,10 @@ export default function PortalAlunoPage() {
     if (!alunoData) { setLoading(false); return; }
     setAluno(alunoData);
     setTreinoHipertrofiaAtivo((alunoData as any).treino_hipertrofia || false);
-    await loadAlunoData(alunoData.id, (alunoData as any).treino_hipertrofia);
+    await loadAlunoData(alunoData.id, (alunoData as any).treino_hipertrofia, alunoData);
   };
 
-  const loadAlunoData = async (alunoId: string, temHipertrofia?: boolean) => {
+  const loadAlunoData = async (alunoId: string, temHipertrofia?: boolean, alunoData?: any) => {
     const [{ data: mens }, { data: conf }, { data: mat }, { data: avals }, { data: mods }] = await Promise.all([
       supabase.from('mensalidades').select('*').eq('aluno_id', alunoId).order('data_vencimento', { ascending: false }),
       supabase.from('configuracoes').select('*').single(),
@@ -147,13 +148,38 @@ export default function PortalAlunoPage() {
       }
     }
 
-    // Carregar módulo Hipertrofia se ativo
-    if (temHipertrofia) {
-      const { data: hiperMod } = await supabase.from('modalidades').select('id, nome').eq('nome', 'TREINOS HIPERTROFIA').eq('ativo', true).single();
-      if (hiperMod) {
-        setHipertrofiaMod(hiperMod);
-        const { data: hiperHrs } = await supabase.from('horarios_aulas').select('*, exercicios_horario(id, titulo, descricao, imagem_url, ordem)').eq('modalidade_id', hiperMod.id).order('dia_semana').order('horario_inicio');
-        if (hiperHrs) setHipertrofiaHorarios(hiperHrs);
+    // Carregar Módulos Especiais (TREINOS HIPERTROFIA e cópias)
+    const modulosIds: string[] = (alunoData as any)?.modulos_especiais_ids || [];
+    if (temHipertrofia || (modulosIds && modulosIds.length > 0)) {
+      // Buscar todas as modalidades que começam com "TREINOS HIPERTROFIA"
+      const { data: allHiperMods } = await supabase.from('modalidades').select('id, nome').ilike('nome', 'TREINOS HIPERTROFIA%').eq('ativo', true);
+      
+      if (allHiperMods && allHiperMods.length > 0) {
+        // Filtrar apenas os que o aluno tem acesso
+        const modsDoAluno = allHiperMods.filter((m: any) => {
+          if (modulosIds.includes(m.id)) return true;
+          // Retrocompatibilidade: se treino_hipertrofia=true, incluir o original
+          if (temHipertrofia && m.nome === 'TREINOS HIPERTROFIA') return true;
+          return false;
+        });
+
+        // Retrocompatibilidade com o módulo original
+        const modOriginal = modsDoAluno.find((m: any) => m.nome === 'TREINOS HIPERTROFIA');
+        if (modOriginal) {
+          setHipertrofiaMod(modOriginal);
+          const { data: hiperHrs } = await supabase.from('horarios_aulas').select('*, exercicios_horario(id, titulo, descricao, imagem_url, ordem)').eq('modalidade_id', modOriginal.id).order('dia_semana').order('horario_inicio');
+          if (hiperHrs) setHipertrofiaHorarios(hiperHrs);
+          setTreinoHipertrofiaAtivo(true);
+        }
+
+        // Carregar todos os módulos especiais adicionais (cópias)
+        const modsExtras = modsDoAluno.filter((m: any) => m.nome !== 'TREINOS HIPERTROFIA');
+        const modsComHorarios: any[] = [];
+        for (const mod of modsExtras) {
+          const { data: hrs } = await supabase.from('horarios_aulas').select('*, exercicios_horario(id, titulo, descricao, imagem_url, ordem)').eq('modalidade_id', mod.id).order('dia_semana').order('horario_inicio');
+          modsComHorarios.push({ ...mod, horarios: hrs || [] });
+        }
+        setModulosEspeciais(modsComHorarios);
       }
     }
 
@@ -232,9 +258,10 @@ export default function PortalAlunoPage() {
   };
 
   const getExerciciosDoDia = (modalidadeId: string, dia: number) => {
-    // Verificar se é a modalidade de hipertrofia
+    // Verificar se é a modalidade de hipertrofia ou módulo especial
     const isHipertrofia = hipertrofiaMod && modalidadeId === hipertrofiaMod.id;
-    const horariosSource = isHipertrofia ? hipertrofiaHorarios : horariosMods;
+    const modEspecial = modulosEspeciais.find((m: any) => m.id === modalidadeId);
+    const horariosSource = isHipertrofia ? hipertrofiaHorarios : modEspecial ? modEspecial.horarios : horariosMods;
     const horario = horariosSource.find((h: any) => h.modalidade_id === modalidadeId && h.dia_semana === dia);
     if (!horario || !horario.exercicios_horario) return { horario, exercicios: [] };
     const exercicios = [...horario.exercicios_horario].sort((a: any, b: any) => (a.ordem || 0) - (b.ordem || 0));
@@ -267,7 +294,8 @@ export default function PortalAlunoPage() {
 
   const isDiaConcluido = (modalidadeId: string, dia: number) => {
     const isHipertrofia = hipertrofiaMod && modalidadeId === hipertrofiaMod.id;
-    const horariosSource = isHipertrofia ? hipertrofiaHorarios : horariosMods;
+    const modEspecial = modulosEspeciais.find((m: any) => m.id === modalidadeId);
+    const horariosSource = isHipertrofia ? hipertrofiaHorarios : modEspecial ? modEspecial.horarios : horariosMods;
     const horario = horariosSource.find((h: any) => h.modalidade_id === modalidadeId && h.dia_semana === dia);
     if (!horario || !horario.exercicios_horario || horario.exercicios_horario.length === 0) return false;
     return horario.exercicios_horario.every((ex: any) => treinosHoje.includes(ex.id));
@@ -626,6 +654,142 @@ export default function PortalAlunoPage() {
             </div>
           </div>
         )}
+
+        {/* Modalidades */}
+        {/* Módulos Especiais extras (cópias do TREINOS HIPERTROFIA) */}
+        {modulosEspeciais.map((modEspecial: any) => (
+          <div key={modEspecial.id} className="card border-2 border-orange-500/50 bg-gradient-to-br from-orange-950/20 to-dark-900">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 bg-orange-500/20 rounded-lg flex items-center justify-center">
+                <span className="text-xl">🏋️</span>
+              </div>
+              <div>
+                <h2 className="text-lg font-bold text-orange-400">{modEspecial.nome}</h2>
+                <p className="text-xs text-orange-300/70">Módulo exclusivo • Treinos guiados por dia</p>
+              </div>
+            </div>
+            <div className="space-y-4">
+              {(() => {
+                const modId = modEspecial.id;
+                const modHorarios = modEspecial.horarios || [];
+                const isAberto = treinoAberto === modId;
+
+                return (
+                  <>
+                    <div className="flex justify-end">
+                      <button
+                        onClick={() => isAberto ? fecharTreino() : abrirTreino(modId)}
+                        className={`px-5 py-2.5 rounded-lg text-sm font-bold transition-all ${isAberto ? 'bg-red-900/30 text-red-400 border border-red-800' : 'bg-orange-500 text-white hover:bg-orange-600 shadow-lg shadow-orange-500/30'}`}
+                      >
+                        {isAberto ? '✕ Fechar' : '💪 Iniciar Treino'}
+                      </button>
+                    </div>
+
+                    {isAberto && (
+                      <div className="bg-dark-800 rounded-xl p-4">
+                        {treinoDia === null ? (
+                          <div>
+                            <p className="text-sm text-dark-300 mb-3 text-center">Selecione o dia do treino:</p>
+                            <div className="grid grid-cols-5 gap-2">
+                              {[1, 2, 3, 4, 5].map(dia => {
+                                const temExercicios = modHorarios.some((h: any) => h.dia_semana === dia && h.exercicios_horario && h.exercicios_horario.length > 0);
+                                const concluido = isDiaConcluido(modId, dia);
+                                return (
+                                  <button
+                                    key={dia}
+                                    onClick={() => temExercicios ? selecionarDiaTreino(dia) : null}
+                                    disabled={!temExercicios}
+                                    className={`p-3 rounded-xl text-center transition-all ${
+                                      concluido ? 'bg-orange-900/40 border-2 border-orange-500' :
+                                      temExercicios ? 'bg-dark-700 hover:bg-orange-900/30 border border-dark-600 hover:border-orange-500' :
+                                      'bg-dark-900 border border-dark-700 opacity-40 cursor-not-allowed'
+                                    }`}
+                                  >
+                                    <p className={`font-bold text-sm ${concluido ? 'text-orange-400' : temExercicios ? 'text-dark-100' : 'text-dark-500'}`}>
+                                      {diasSemana[dia]}
+                                    </p>
+                                    {concluido && <p className="text-orange-400 text-xs mt-1">✅</p>}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        ) : !treinoConcluido ? (
+                          (() => {
+                            const horario = modHorarios.find((h: any) => h.dia_semana === treinoDia);
+                            const exercicios = horario?.exercicios_horario ? [...horario.exercicios_horario].sort((a: any, b: any) => (a.ordem || 0) - (b.ordem || 0)) : [];
+                            if (exercicios.length === 0) return (
+                              <div className="text-center py-6">
+                                <p className="text-dark-400">Nenhum exercício cadastrado para este dia.</p>
+                                <button onClick={() => setTreinoDia(null)} className="btn-secondary mt-4">← Voltar</button>
+                              </div>
+                            );
+                            const exAtual = exercicios[exercicioAtual];
+                            if (!exAtual) return null;
+                            const jaFeito = treinosHoje.includes(exAtual.id);
+
+                            return (
+                              <div>
+                                <div className="flex items-center justify-between mb-4">
+                                  <button onClick={() => setTreinoDia(null)} className="text-sm text-dark-400 hover:text-dark-200">← Voltar</button>
+                                  <span className="text-xs text-orange-400 font-medium">
+                                    {diasSemana[treinoDia]} — Exercício {exercicioAtual + 1} de {exercicios.length}
+                                  </span>
+                                </div>
+                                <div className="w-full bg-dark-700 rounded-full h-2 mb-6">
+                                  <div className="bg-orange-500 h-2 rounded-full transition-all duration-500" style={{ width: `${(exerciciosConcluidos.length / exercicios.length) * 100}%` }}></div>
+                                </div>
+                                <div className="bg-dark-700 rounded-xl p-4 space-y-4">
+                                  {exAtual.imagem_url && <img src={exAtual.imagem_url} alt={exAtual.titulo || exAtual.descricao} className="w-full rounded-xl max-h-64 object-cover" />}
+                                  <div>
+                                    {exAtual.titulo && <h3 className="text-lg font-bold text-dark-100">{exAtual.titulo}</h3>}
+                                    {exAtual.descricao && <p className="text-dark-300 mt-1">{exAtual.descricao}</p>}
+                                  </div>
+                                </div>
+                                <div className="mt-6 space-y-3">
+                                  <div className="flex gap-3">
+                                    <button onClick={() => setExercicioAtual(exercicioAtual - 1)} disabled={exercicioAtual === 0} className={`flex-1 py-3 rounded-xl font-medium text-center transition-all ${exercicioAtual === 0 ? 'bg-dark-800 text-dark-500 cursor-not-allowed' : 'bg-dark-700 text-dark-200 hover:bg-dark-600 active:scale-95'}`}>← Anterior</button>
+                                    <button onClick={() => setExercicioAtual(exercicioAtual + 1)} disabled={exercicioAtual >= exercicios.length - 1} className={`flex-1 py-3 rounded-xl font-medium text-center transition-all ${exercicioAtual >= exercicios.length - 1 ? 'bg-dark-800 text-dark-500 cursor-not-allowed' : 'bg-dark-700 text-dark-200 hover:bg-dark-600 active:scale-95'}`}>Próximo →</button>
+                                  </div>
+                                  <button onClick={() => marcarExercicioConcluido(exAtual.id, horario.id)} disabled={jaFeito} className={`w-full py-3 rounded-xl font-medium text-center transition-all ${jaFeito ? 'bg-orange-900/30 text-orange-400 border border-orange-800' : 'bg-orange-500 text-white hover:bg-orange-600 active:scale-95'}`}>
+                                    {jaFeito ? '✅ Já executado' : '✅ Marcar como Concluído'}
+                                  </button>
+                                </div>
+                              </div>
+                            );
+                          })()
+                        ) : (
+                          <div className="text-center py-8">
+                            <span className="text-6xl block mb-4">🎉</span>
+                            <h3 className="text-2xl font-bold text-dark-100 mb-2">Treino Concluído!</h3>
+                            <p className="text-dark-400 mb-6">Parabéns! Você completou o treino de {diasSemana[treinoDia]}.</p>
+                            <div className="flex gap-3 justify-center">
+                              <button onClick={() => setTreinoDia(null)} className="btn-secondary">← Outro dia</button>
+                              <button onClick={fecharTreino} className="px-6 py-2 bg-orange-500 text-white rounded-xl font-medium">✓ Finalizar</button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {!isAberto && modHorarios.length > 0 && (
+                      <div className="bg-dark-800/50 rounded-lg p-3">
+                        <p className="text-xs font-medium text-orange-400/70 uppercase mb-2">Dias de treino</p>
+                        <div className="flex flex-wrap gap-2">
+                          {modHorarios.map((h: any) => (
+                            <span key={h.id} className="px-3 py-1.5 bg-dark-700 rounded-lg text-sm text-dark-200">
+                              <strong className="text-orange-400">{diasSemana[h.dia_semana]}</strong> {h.horario_inicio?.slice(0, 5)}-{h.horario_fim?.slice(0, 5)}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
+            </div>
+          </div>
+        ))}
 
         {/* Modalidades */}
         {alunoMods.length > 0 && (

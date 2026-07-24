@@ -49,6 +49,7 @@ export default function AlunosPage() {
     primeiro_pagamento_confirmado: false,
     forma_pagamento_inicial: 'pix',
     treino_hipertrofia: false,
+    modulos_especiais_ids: [] as string[],
   });
 
   useEffect(() => { loadAll(); }, []);
@@ -97,13 +98,19 @@ export default function AlunosPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const academiaId = localStorage.getItem('academia_id');
+    // Determinar treino_hipertrofia com base nos módulos especiais (retrocompatibilidade)
+    const modulosEspeciais = form.modulos_especiais_ids || [];
+    const hipertrofiaOriginal = modalidades.find((m: any) => m.nome === 'TREINOS HIPERTROFIA');
+    const temHipertrofiaOriginal = hipertrofiaOriginal ? modulosEspeciais.includes(hipertrofiaOriginal.id) : form.treino_hipertrofia;
+
     const alunoPayload = {
       nome: form.nome, email: form.email, telefone: form.telefone,
       cpf: form.cpf || null, data_nascimento: form.data_nascimento || null,
       endereco: form.endereco || null, status: form.status,
       convenio_id: form.convenio_id || null, observacoes: form.observacoes || null,
       dia_vencimento: parseInt(form.dia_vencimento) || 10,
-      treino_hipertrofia: form.treino_hipertrofia,
+      treino_hipertrofia: temHipertrofiaOriginal,
+      modulos_especiais_ids: modulosEspeciais,
       academia_id: academiaId,
     };
 
@@ -303,13 +310,19 @@ export default function AlunosPage() {
     setEditingAluno(aluno);
     const matAtiva = aluno.matriculas?.find((m: any) => m.status === 'ativa' || m.status === 'suspensa');
     const dataInicioMat = matAtiva?.data_inicio || '';
-    setForm({ nome: aluno.nome, email: aluno.email, telefone: aluno.telefone, cpf: aluno.cpf || '', data_nascimento: aluno.data_nascimento || '', endereco: aluno.endereco || '', status: aluno.status, convenio_id: aluno.convenio_id || '', observacoes: aluno.observacoes || '', data_inicio: dataInicioMat, dia_vencimento: String((aluno as any).dia_vencimento || '10'), primeiro_pagamento_confirmado: false, forma_pagamento_inicial: 'pix', treino_hipertrofia: (aluno as any).treino_hipertrofia || false });
+    // Carregar módulos especiais - retrocompatibilidade com treino_hipertrofia
+    let modulosIds = (aluno as any).modulos_especiais_ids || [];
+    if ((!modulosIds || modulosIds.length === 0) && (aluno as any).treino_hipertrofia) {
+      const hiperMod = modalidades.find((m: any) => m.nome === 'TREINOS HIPERTROFIA');
+      if (hiperMod) modulosIds = [hiperMod.id];
+    }
+    setForm({ nome: aluno.nome, email: aluno.email, telefone: aluno.telefone, cpf: aluno.cpf || '', data_nascimento: aluno.data_nascimento || '', endereco: aluno.endereco || '', status: aluno.status, convenio_id: aluno.convenio_id || '', observacoes: aluno.observacoes || '', data_inicio: dataInicioMat, dia_vencimento: String((aluno as any).dia_vencimento || '10'), primeiro_pagamento_confirmado: false, forma_pagamento_inicial: 'pix', treino_hipertrofia: (aluno as any).treino_hipertrofia || false, modulos_especiais_ids: modulosIds });
     setShowModal(true);
   };
 
   const handleNew = () => {
     setEditingAluno(null);
-    setForm({ nome: '', email: '', telefone: '', cpf: '', data_nascimento: '', endereco: '', status: 'ativo', convenio_id: '', observacoes: '', data_inicio: new Date().toISOString().split('T')[0], dia_vencimento: '10', primeiro_pagamento_confirmado: false, forma_pagamento_inicial: 'pix', treino_hipertrofia: false });
+    setForm({ nome: '', email: '', telefone: '', cpf: '', data_nascimento: '', endereco: '', status: 'ativo', convenio_id: '', observacoes: '', data_inicio: new Date().toISOString().split('T')[0], dia_vencimento: '10', primeiro_pagamento_confirmado: false, forma_pagamento_inicial: 'pix', treino_hipertrofia: false, modulos_especiais_ids: [] });
     setSelectedMods([]);
     setShowModal(true);
   };
@@ -599,16 +612,26 @@ export default function AlunosPage() {
                 </select>
               </div>
 
-              {/* Treinos Hipertrofia */}
-              <div className={`rounded-xl p-4 border-2 transition-colors ${form.treino_hipertrofia ? 'bg-orange-50 border-orange-400' : 'bg-dark-800 border-dark-600'}`}>
-                <label className="flex items-center gap-3 cursor-pointer">
-                  <input type="checkbox" checked={form.treino_hipertrofia} onChange={(e) => setForm({...form, treino_hipertrofia: e.target.checked})} className="rounded w-5 h-5 accent-orange-500" />
-                  <div>
-                    <p className={`font-medium ${form.treino_hipertrofia ? 'text-orange-800' : 'text-dark-200'}`}>🏋️ Ativar Treinos Hipertrofia</p>
-                    <p className={`text-xs ${form.treino_hipertrofia ? 'text-orange-600' : 'text-dark-400'}`}>Módulo especial com treinos guiados por dia da semana (sem custo adicional)</p>
+              {/* Módulos Especiais (Treinos Hipertrofia e cópias) */}
+              {modalidades.filter((m: any) => m.nome.startsWith('TREINOS HIPERTROFIA') && m.ativo).map((mod: any) => {
+                const isAtivo = form.modulos_especiais_ids.includes(mod.id);
+                return (
+                  <div key={mod.id} className={`rounded-xl p-4 border-2 transition-colors ${isAtivo ? 'bg-orange-50 border-orange-400' : 'bg-dark-800 border-dark-600'}`}>
+                    <label className="flex items-center gap-3 cursor-pointer">
+                      <input type="checkbox" checked={isAtivo} onChange={(e) => {
+                        const ids = e.target.checked
+                          ? [...form.modulos_especiais_ids, mod.id]
+                          : form.modulos_especiais_ids.filter((id: string) => id !== mod.id);
+                        setForm({...form, modulos_especiais_ids: ids});
+                      }} className="rounded w-5 h-5 accent-orange-500" />
+                      <div>
+                        <p className={`font-medium ${isAtivo ? 'text-orange-800' : 'text-dark-200'}`}>🏋️ Ativar {mod.nome}</p>
+                        <p className={`text-xs ${isAtivo ? 'text-orange-600' : 'text-dark-400'}`}>{mod.descricao || 'Módulo especial com treinos guiados por dia da semana (sem custo adicional)'}</p>
+                      </div>
+                    </label>
                   </div>
-                </label>
-              </div>
+                );
+              })}
 
               {/* Modalidades (só no cadastro novo) */}
               {!editingAluno && (

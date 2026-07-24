@@ -211,7 +211,7 @@ export default function ModalidadesPage() {
             {loading ? <div className="card animate-pulse"><div className="h-20 bg-dark-700 rounded"></div></div> :
             modalidades.length === 0 ? <div className="card text-center py-12"><span className="text-4xl block mb-4">🏃</span><p className="text-dark-400">Nenhuma modalidade.</p></div> :
             modalidades.map((mod) => {
-              const isHipertrofia = mod.nome === 'TREINOS HIPERTROFIA';
+              const isHipertrofia = mod.nome.startsWith('TREINOS HIPERTROFIA');
               return (
               <div key={mod.id} className={`card ${!mod.ativo ? 'opacity-60' : ''} ${isHipertrofia ? 'border-2 border-orange-500/50 bg-gradient-to-br from-orange-950/20 to-dark-900' : ''}`}>
                 <div className="flex items-start justify-between mb-3">
