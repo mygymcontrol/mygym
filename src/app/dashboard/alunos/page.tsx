@@ -396,10 +396,16 @@ export default function AlunosPage() {
     const matStatus = isAtivo ? 'suspensa' : 'ativa';
     await supabase.from('matriculas').update({ status: matStatus }).eq('aluno_id', aluno.id).in('status', ['ativa', 'suspensa']);
 
-    // Se pausando, cancelar mensalidades futuras pendentes
+    // Se pausando, suspender todas as mensalidades pendentes e atrasadas
     if (isAtivo) {
+      await supabase.from('mensalidades').update({ status: 'suspenso' }).eq('aluno_id', aluno.id).in('status', ['pendente', 'atrasado']);
+    } else {
+      // Se reativando, restaurar mensalidades suspensas para pendente/atrasado
       const hoje = new Date().toISOString().split('T')[0];
-      await supabase.from('mensalidades').update({ status: 'cancelado' }).eq('aluno_id', aluno.id).eq('status', 'pendente').gt('data_vencimento', hoje);
+      // Mensalidades com vencimento futuro voltam como pendente
+      await supabase.from('mensalidades').update({ status: 'pendente' }).eq('aluno_id', aluno.id).eq('status', 'suspenso').gte('data_vencimento', hoje);
+      // Mensalidades com vencimento passado voltam como atrasado
+      await supabase.from('mensalidades').update({ status: 'atrasado' }).eq('aluno_id', aluno.id).eq('status', 'suspenso').lt('data_vencimento', hoje);
     }
 
     // Log

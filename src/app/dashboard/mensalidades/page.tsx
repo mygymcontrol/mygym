@@ -3,7 +3,6 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { formatDate } from '@/lib/utils';
-import { renovarMensalidades } from '@/lib/renovar-mensalidades';
 import DashboardLayout from '@/components/DashboardLayout';
 
 interface MensalidadeComAluno {
@@ -51,61 +50,77 @@ export default function MensalidadesPage() {
   }, []);
 
   const loadMensalidades = async () => {
-    // Renovar mensalidades (gerar novas, marcar vencidas)
-    try { await renovarMensalidades(); } catch (e) { console.error('Erro renovação:', e); }
-
-    // Buscar todas mensalidades
-    const { data } = await supabase
-      .from('mensalidades')
-      .select('*, alunos(nome, telefone, email, convenio_id, convenios(nome, valor_checkin, desconto_percentual))')
-      .order('data_vencimento', { ascending: false });
-
-    if (data) {
-      // Mostrar: todas do mês atual (qualquer status) + atrasadas de meses anteriores
-      const hoje = new Date();
-      const mesAtual = hoje.getMonth() + 1;
-      const anoAtual = hoje.getFullYear();
-
-      const filtered = data.filter((m: any) => {
-        if (m.status === 'atrasado') return true;
-        const [ano, mes] = m.data_vencimento.split('-').map(Number);
-        if (ano === anoAtual && mes === mesAtual) return true;
-        return false;
-      });
-      setMensalidades(filtered as any);
-
-      // Load check-in counts for alunos with valor_checkin convênio
-      await loadCheckinCounts(filtered as any);
-
-      // Load convenio-modalidade links
-      const { data: convMods } = await supabase.from('convenio_modalidades').select('convenio_id, modalidade_id');
-      const grouped: Record<string, string[]> = {};
-      (convMods || []).forEach((cm: any) => {
-        if (!grouped[cm.convenio_id]) grouped[cm.convenio_id] = [];
-        grouped[cm.convenio_id].push(cm.modalidade_id);
-      });
-      setConvenioMods(grouped);
-
-      // Load aluno modalidade values for alunos with convênio
-      const alunoIdsWithConvenio = Array.from(new Set(filtered.filter((m: any) => m.alunos?.convenio_id).map((m: any) => m.aluno_id)));
-      const alunoModMap: Record<string, {mod_id: string, valor: number}[]> = {};
-      if (alunoIdsWithConvenio.length > 0) {
-        const { data: allAlunoMods } = await supabase
-          .from('aluno_modalidades')
-          .select('aluno_id, modalidade_id, modalidades(valor)')
-          .in('aluno_id', alunoIdsWithConvenio)
-          .eq('status', 'ativa');
-        (allAlunoMods || []).forEach((am: any) => {
-          if (!alunoModMap[am.aluno_id]) alunoModMap[am.aluno_id] = [];
-          alunoModMap[am.aluno_id].push({ mod_id: am.modalidade_id, valor: Number(am.modalidades?.valor) || 0 });
-        });
-      }
-      setAlunoModValores(alunoModMap);
+    // Renovar mensalidades apenas 1x por sessão (em background)
+    if (!sessionStorage.getItem('mensalidades_renovadas')) {
+      fetch('/api/renovar-mensalidades').then(() => {
+        sessionStorage.setItem('mensalidades_renovadas', '1');
+      }).catch(() => {});
     }
+
+    // Calcular filtros de data para query server-side
+    const hoje = new Date();
+    const mesAtual = hoje.getMonth() + 1;
+    const anoAtual = hoje.getFullYear();
+    const inicioMes = `${anoAtual}-${String(mesAtual).padStart(2, '0')}-01`;
+    const ultimoDia = new Date(anoAtual, mesAtual, 0).getDate();
+    const fimMes = `${anoAtual}-${String(mesAtual).padStart(2, '0')}-${ultimoDia}`;
+
+    // Buscar em paralelo: mensalidades do mês atual + atrasadas
+    const [{ data: mesAtualData }, { data: atrasadasData }] = await Promise.all([
+      supabase
+        .from('mensalidades')
+        .select('*, alunos(nome, telefone, email, convenio_id, convenios(nome, valor_checkin, desconto_percentual))')
+        .gte('data_vencimento', inicioMes)
+        .lte('data_vencimento', fimMes)
+        .order('data_vencimento', { ascending: false }),
+      supabase
+        .from('mensalidades')
+        .select('*, alunos(nome, telefone, email, convenio_id, convenios(nome, valor_checkin, desconto_percentual))')
+        .eq('status', 'atrasado')
+        .lt('data_vencimento', inicioMes)
+        .order('data_vencimento', { ascending: false }),
+    ]);
+
+    // Combinar resultados (sem duplicatas)
+    const allData = [...(mesAtualData || []), ...(atrasadasData || [])];
+    const uniqueMap = new Map(allData.map(m => [m.id, m]));
+    const filtered = Array.from(uniqueMap.values());
+    setMensalidades(filtered as any);
+
+    // Carregar dados auxiliares em paralelo
+    const alunoIdsWithConvenio = Array.from(new Set(filtered.filter((m: any) => m.alunos?.convenio_id).map((m: any) => m.aluno_id)));
+
+    const [checkinResult, convModsResult, alunoModsResult] = await Promise.all([
+      // Check-in counts — batch query
+      loadCheckinCountsBatch(filtered as any),
+      // Convenio-modalidade links
+      supabase.from('convenio_modalidades').select('convenio_id, modalidade_id'),
+      // Aluno modalidades com convênio
+      alunoIdsWithConvenio.length > 0
+        ? supabase.from('aluno_modalidades').select('aluno_id, modalidade_id, modalidades(valor)').in('aluno_id', alunoIdsWithConvenio).eq('status', 'ativa')
+        : Promise.resolve({ data: [] }),
+    ]);
+
+    // Processar convenio-modalidade
+    const grouped: Record<string, string[]> = {};
+    (convModsResult.data || []).forEach((cm: any) => {
+      if (!grouped[cm.convenio_id]) grouped[cm.convenio_id] = [];
+      grouped[cm.convenio_id].push(cm.modalidade_id);
+    });
+    setConvenioMods(grouped);
+
+    // Processar aluno modalidade values
+    const alunoModMap: Record<string, {mod_id: string, valor: number}[]> = {};
+    (alunoModsResult.data || []).forEach((am: any) => {
+      if (!alunoModMap[am.aluno_id]) alunoModMap[am.aluno_id] = [];
+      alunoModMap[am.aluno_id].push({ mod_id: am.modalidade_id, valor: Number(am.modalidades?.valor) || 0 });
+    });
+    setAlunoModValores(alunoModMap);
+
     setLoading(false);
   };
 
-  const loadCheckinCounts = async (mensalidadesList: MensalidadeComAluno[]) => {
+  const loadCheckinCountsBatch = async (mensalidadesList: MensalidadeComAluno[]) => {
     const counts: Record<string, number> = {};
 
     // Get unique aluno+month combos that have valor_checkin
@@ -115,30 +130,42 @@ export default function MensalidadesPage() {
       if (valorCheckin && valorCheckin > 0) {
         const [ano, mes] = m.data_vencimento.split('-').map(Number);
         const key = `${m.aluno_id}_${ano}-${String(mes).padStart(2, '0')}`;
-        if (!counts[key] && counts[key] !== 0) {
+        if (!(key in counts)) {
           toQuery.push({ aluno_id: m.aluno_id, year: ano, month: mes });
-          counts[key] = 0; // placeholder
+          counts[key] = 0;
         }
       }
     }
 
-    // Query check-ins for each aluno/month
-    for (const q of toQuery) {
-      const startDate = `${q.year}-${String(q.month).padStart(2, '0')}-01`;
-      const endDate = q.month === 12
-        ? `${q.year + 1}-01-01`
-        : `${q.year}-${String(q.month + 1).padStart(2, '0')}-01`;
-
-      const { count } = await supabase
-        .from('checkins')
-        .select('*', { count: 'exact', head: true })
-        .eq('aluno_id', q.aluno_id)
-        .gte('data', startDate)
-        .lt('data', endDate);
-
-      const key = `${q.aluno_id}_${q.year}-${String(q.month).padStart(2, '0')}`;
-      counts[key] = count || 0;
+    if (toQuery.length === 0) {
+      setCheckinCounts(counts);
+      return;
     }
+
+    // Buscar todos os check-ins relevantes de uma vez
+    const alunoIds = Array.from(new Set(toQuery.map(q => q.aluno_id)));
+    const minDate = toQuery.reduce((min, q) => {
+      const d = `${q.year}-${String(q.month).padStart(2, '0')}-01`;
+      return d < min ? d : min;
+    }, '9999-99-99');
+    const maxQuery = toQuery.reduce((max, q) => {
+      const nextMonth = q.month === 12 ? `${q.year + 1}-01-01` : `${q.year}-${String(q.month + 1).padStart(2, '0')}-01`;
+      return nextMonth > max ? nextMonth : max;
+    }, '0000-00-00');
+
+    const { data: allCheckins } = await supabase
+      .from('checkins')
+      .select('aluno_id, data')
+      .in('aluno_id', alunoIds)
+      .gte('data', minDate)
+      .lt('data', maxQuery);
+
+    // Contar por aluno/mês
+    (allCheckins || []).forEach((c: any) => {
+      const [ano, mes] = c.data.split('-').map(Number);
+      const key = `${c.aluno_id}_${ano}-${String(mes).padStart(2, '0')}`;
+      if (key in counts) counts[key]++;
+    });
 
     setCheckinCounts(counts);
   };

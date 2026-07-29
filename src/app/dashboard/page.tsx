@@ -3,7 +3,6 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { getHoje, formatMoney } from '@/lib/utils';
-import { renovarMensalidades } from '@/lib/renovar-mensalidades';
 import DashboardLayout from '@/components/DashboardLayout';
 
 interface DashboardStats {
@@ -36,83 +35,58 @@ export default function DashboardPage() {
 
   const loadStats = async () => {
     try {
-      // Renovar mensalidades automaticamente
-      await renovarMensalidades();
+      // Renovar mensalidades apenas 1x por sessão (em background, sem bloquear)
+      if (!sessionStorage.getItem('mensalidades_renovadas')) {
+        fetch('/api/renovar-mensalidades').then(() => {
+          sessionStorage.setItem('mensalidades_renovadas', '1');
+        }).catch(() => {});
+      }
 
-      // Total de alunos
-      const { count: totalAlunos } = await supabase
-        .from('alunos')
-        .select('*', { count: 'exact', head: true });
-
-      // Alunos ativos
-      const { count: alunosAtivos } = await supabase
-        .from('alunos')
-        .select('*', { count: 'exact', head: true })
-        .eq('status', 'ativo');
-
-      // Inadimplentes = alunos com pelo menos 1 mensalidade atrasada
-      const { data: mensAtrasadas } = await supabase
-        .from('mensalidades')
-        .select('aluno_id')
-        .eq('status', 'atrasado');
-      const alunosInadimplentes = new Set(mensAtrasadas?.map(m => m.aluno_id) || []);
-      const inadimplentes = alunosInadimplentes.size;
-
-      // Receita do mês (mensalidades pagas no mês atual - fuso São Paulo)
+      // Calcular datas necessárias
       const spNow = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }));
       const mesAtual = spNow.getMonth() + 1;
       const anoAtual = spNow.getFullYear();
       const inicioMes = `${anoAtual}-${String(mesAtual).padStart(2, '0')}-01`;
       const ultimoDia = new Date(anoAtual, mesAtual, 0).getDate();
       const fimMes = `${anoAtual}-${String(mesAtual).padStart(2, '0')}-${ultimoDia}`;
-      const { data: pagamentos } = await supabase
-        .from('mensalidades')
-        .select('valor')
-        .eq('status', 'pago')
-        .gte('data_pagamento', inicioMes)
-        .lte('data_pagamento', fimMes);
-
-      const receitaMes = pagamentos?.reduce((sum, p) => sum + Number(p.valor), 0) || 0;
-
-      // Check-ins hoje
       const hoje = getHoje();
-      const { count: checkinsHoje } = await supabase
-        .from('checkins')
-        .select('*', { count: 'exact', head: true })
-        .eq('data', hoje);
 
-      // Mensalidades pendentes = atrasadas + pendentes do mês atual
-      const inicioMesStr = `${anoAtual}-${String(mesAtual).padStart(2, '0')}-01`;
-      const fimMesStr = `${anoAtual}-${String(mesAtual).padStart(2, '0')}-31`;
+      // Executar todas as queries em paralelo
+      const [
+        { count: totalAlunos },
+        { count: alunosAtivos },
+        { data: mensAtrasadas },
+        { data: pagamentos },
+        { count: checkinsHoje },
+        { count: atrasadas },
+        { count: pendentesMesAtual },
+        { data: alunosComMod },
+        { data: todosAtivos },
+      ] = await Promise.all([
+        supabase.from('alunos').select('*', { count: 'exact', head: true }),
+        supabase.from('alunos').select('*', { count: 'exact', head: true }).eq('status', 'ativo'),
+        supabase.from('mensalidades').select('aluno_id').eq('status', 'atrasado'),
+        supabase.from('mensalidades').select('valor').eq('status', 'pago').gte('data_pagamento', inicioMes).lte('data_pagamento', fimMes),
+        supabase.from('checkins').select('*', { count: 'exact', head: true }).eq('data', hoje),
+        supabase.from('mensalidades').select('*', { count: 'exact', head: true }).eq('status', 'atrasado'),
+        supabase.from('mensalidades').select('*', { count: 'exact', head: true }).eq('status', 'pendente').gte('data_vencimento', inicioMes).lte('data_vencimento', fimMes),
+        supabase.from('aluno_modalidades').select('aluno_id').eq('status', 'ativa'),
+        supabase.from('alunos').select('id, convenio_id').eq('status', 'ativo'),
+      ]);
 
-      const { count: atrasadas } = await supabase
-        .from('mensalidades')
-        .select('*', { count: 'exact', head: true })
-        .eq('status', 'atrasado');
-
-      const { count: pendentesMesAtual } = await supabase
-        .from('mensalidades')
-        .select('*', { count: 'exact', head: true })
-        .eq('status', 'pendente')
-        .gte('data_vencimento', inicioMesStr)
-        .lte('data_vencimento', fimMesStr);
-
-      const mensalidadesPendentes = (atrasadas || 0) + (pendentesMesAtual || 0);
-
-      // Alunos sem plano (sem modalidades vinculadas)
-      const { data: alunosComMod } = await supabase.from('aluno_modalidades').select('aluno_id').eq('status', 'ativa');
-      const alunosComModSet = new Set((alunosComMod || []).map(m => m.aluno_id));
-      const { data: todosAtivos } = await supabase.from('alunos').select('id, convenio_id').eq('status', 'ativo');
-      const semPlano = (todosAtivos || []).filter(a => !alunosComModSet.has(a.id)).length;
-      const comConvenio = (todosAtivos || []).filter(a => a.convenio_id).length;
+      const alunosInadimplentes = new Set(mensAtrasadas?.map(m => m.aluno_id) || []);
+      const receitaMes = pagamentos?.reduce((sum, p) => sum + Number(p.valor), 0) || 0;
+      const alunosComModSet = new Set((alunosComMod || []).map((m: any) => m.aluno_id));
+      const semPlano = (todosAtivos || []).filter((a: any) => !alunosComModSet.has(a.id)).length;
+      const comConvenio = (todosAtivos || []).filter((a: any) => a.convenio_id).length;
 
       setStats({
         totalAlunos: totalAlunos || 0,
         alunosAtivos: alunosAtivos || 0,
-        inadimplentes,
+        inadimplentes: alunosInadimplentes.size,
         receitaMes,
         checkinsHoje: checkinsHoje || 0,
-        mensalidadesPendentes,
+        mensalidadesPendentes: (atrasadas || 0) + (pendentesMesAtual || 0),
         semPlano,
         comConvenio,
       });
