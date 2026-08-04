@@ -131,9 +131,9 @@ export default function AlunosPage() {
           await supabase.from('mensalidades').update({ status: 'suspenso' }).eq('aluno_id', editingAluno.id).in('status', ['pendente', 'atrasado']);
           await supabase.from('matriculas').update({ status: 'suspensa' }).eq('aluno_id', editingAluno.id).in('status', ['ativa', 'suspensa']);
         } else if (form.status === 'ativo' && (editingAluno.status === 'suspenso' || editingAluno.status === 'cancelado')) {
-          // Reativar: mensalidades suspensas/canceladas futuras → pendente, passadas → atrasado, matrícula → ativa
+          // Reativar: mensalidades suspensas/canceladas futuras → pendente, passadas → cancelado (aluno não usou), matrícula → ativa
           await supabase.from('mensalidades').update({ status: 'pendente' }).eq('aluno_id', editingAluno.id).in('status', ['suspenso', 'cancelado']).gte('data_vencimento', hoje);
-          await supabase.from('mensalidades').update({ status: 'atrasado' }).eq('aluno_id', editingAluno.id).eq('status', 'suspenso').lt('data_vencimento', hoje);
+          await supabase.from('mensalidades').update({ status: 'cancelado' }).eq('aluno_id', editingAluno.id).eq('status', 'suspenso').lt('data_vencimento', hoje);
           await supabase.from('matriculas').update({ status: 'ativa' }).eq('aluno_id', editingAluno.id).in('status', ['suspensa', 'cancelada']);
         } else if (form.status === 'cancelado') {
           // Cancelar: mensalidades pendentes/atrasadas → cancelado, matrícula → cancelada
@@ -421,12 +421,10 @@ export default function AlunosPage() {
     if (isAtivo) {
       await supabase.from('mensalidades').update({ status: 'suspenso' }).eq('aluno_id', aluno.id).in('status', ['pendente', 'atrasado']);
     } else {
-      // Se reativando, restaurar mensalidades suspensas para pendente/atrasado
+      // Se reativando: mensalidades suspensas com vencimento passado são canceladas (aluno não usou o serviço), futuras voltam como pendente
       const hoje = new Date().toISOString().split('T')[0];
-      // Mensalidades com vencimento futuro voltam como pendente
       await supabase.from('mensalidades').update({ status: 'pendente' }).eq('aluno_id', aluno.id).eq('status', 'suspenso').gte('data_vencimento', hoje);
-      // Mensalidades com vencimento passado voltam como atrasado
-      await supabase.from('mensalidades').update({ status: 'atrasado' }).eq('aluno_id', aluno.id).eq('status', 'suspenso').lt('data_vencimento', hoje);
+      await supabase.from('mensalidades').update({ status: 'cancelado' }).eq('aluno_id', aluno.id).eq('status', 'suspenso').lt('data_vencimento', hoje);
     }
 
     // Log
