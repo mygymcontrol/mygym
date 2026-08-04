@@ -30,10 +30,10 @@ export async function renovarMensalidades() {
   if (!alunos || alunos.length === 0) return;
 
   for (const aluno of alunos) {
-    // Buscar matrícula ativa
+    // Buscar matrícula ativa (incluindo data_inicio)
     const { data: matricula } = await supabase
       .from('matriculas')
-      .select('id, valor_final')
+      .select('id, valor_final, data_inicio')
       .eq('aluno_id', aluno.id)
       .eq('status', 'ativa')
       .single();
@@ -72,10 +72,10 @@ export async function renovarMensalidades() {
       proximoAno = ano;
       if (proximoMes > 12) { proximoMes = 1; proximoAno++; }
     } else {
-      // Sem mensalidade anterior, gerar para o mês atual
-      const now = new Date();
-      proximoMes = now.getMonth() + 1;
-      proximoAno = now.getFullYear();
+      // Sem mensalidade anterior: usar o mês da data_inicio da matrícula (nunca antes)
+      const [anoInicio, mesInicio] = (matricula.data_inicio || hoje).split('-').map(Number);
+      proximoMes = mesInicio;
+      proximoAno = anoInicio;
     }
 
     // Verificar último dia do mês (regra: dia 31 → 30 se mês não tem 31)
@@ -83,6 +83,9 @@ export async function renovarMensalidades() {
     const diaFinal = Math.min(diaVenc, ultimoDiaMes);
 
     const dataVencimento = `${proximoAno}-${String(proximoMes).padStart(2, '0')}-${String(diaFinal).padStart(2, '0')}`;
+
+    // Nunca gerar mensalidade antes da data_inicio da matrícula
+    if (matricula.data_inicio && dataVencimento < matricula.data_inicio) continue;
 
     // Determinar valor (usar valor da matrícula)
     // Buscar modalidades ativas para calcular valor mensal

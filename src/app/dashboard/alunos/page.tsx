@@ -288,12 +288,12 @@ export default function AlunosPage() {
 
           if (matricula) {
             // Gerar mensalidades
-            // Regra: vencimento = mesmo dia no mês seguinte. Se dia não existe no mês, usar último dia.
+            // Regra: primeira mensalidade = mês da data_inicio no dia_vencimento. Nunca gerar antes da data_inicio.
             const mensalidades = [];
             const valorMensal = valorTotal / duracao;
-            const diaVenc = parseInt(form.dia_vencimento) || diaI;
+            const diaVenc = parseInt(form.dia_vencimento) || 10;
             for (let i = 0; i < duracao; i++) {
-              const mes = mesI + i; // começa no mês do início (primeiro pagamento = mês de cadastro)
+              const mes = mesI + i; // começa no mês da data_inicio
               let ano = anoI;
               let mesCalc = mes;
               // Ajustar se passou de dezembro
@@ -302,6 +302,8 @@ export default function AlunosPage() {
               const ultimoDia = new Date(ano, mesCalc, 0).getDate();
               const diaFinal = Math.min(diaVenc, ultimoDia);
               const dataVenc = `${ano}-${String(mesCalc).padStart(2, '0')}-${String(diaFinal).padStart(2, '0')}`;
+              // Não gerar mensalidade antes da data de início
+              if (dataVenc < form.data_inicio) continue;
               mensalidades.push({
                 matricula_id: matricula.id, aluno_id: novoAluno.id,
                 valor: valorMensal, data_vencimento: dataVenc,
