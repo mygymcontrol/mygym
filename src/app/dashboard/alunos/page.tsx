@@ -120,6 +120,27 @@ export default function AlunosPage() {
     if (editingAluno) {
       const { error } = await supabase.from('alunos').update(alunoPayload).eq('id', editingAluno.id);
       if (error) { alert('Erro ao salvar: ' + error.message); return; }
+
+      // Se o status mudou, sincronizar mensalidades e matrícula
+      const statusMudou = editingAluno.status !== form.status;
+      if (statusMudou) {
+        const hoje = new Date().toISOString().split('T')[0];
+
+        if (form.status === 'suspenso') {
+          // Suspender: mensalidades pendentes/atrasadas → suspenso, matrícula → suspensa
+          await supabase.from('mensalidades').update({ status: 'suspenso' }).eq('aluno_id', editingAluno.id).in('status', ['pendente', 'atrasado']);
+          await supabase.from('matriculas').update({ status: 'suspensa' }).eq('aluno_id', editingAluno.id).in('status', ['ativa', 'suspensa']);
+        } else if (form.status === 'ativo' && (editingAluno.status === 'suspenso' || editingAluno.status === 'cancelado')) {
+          // Reativar: mensalidades suspensas/canceladas futuras → pendente, passadas → atrasado, matrícula → ativa
+          await supabase.from('mensalidades').update({ status: 'pendente' }).eq('aluno_id', editingAluno.id).in('status', ['suspenso', 'cancelado']).gte('data_vencimento', hoje);
+          await supabase.from('mensalidades').update({ status: 'atrasado' }).eq('aluno_id', editingAluno.id).eq('status', 'suspenso').lt('data_vencimento', hoje);
+          await supabase.from('matriculas').update({ status: 'ativa' }).eq('aluno_id', editingAluno.id).in('status', ['suspensa', 'cancelada']);
+        } else if (form.status === 'cancelado') {
+          // Cancelar: mensalidades pendentes/atrasadas → cancelado, matrícula → cancelada
+          await supabase.from('mensalidades').update({ status: 'cancelado' }).eq('aluno_id', editingAluno.id).in('status', ['pendente', 'atrasado', 'suspenso']);
+          await supabase.from('matriculas').update({ status: 'cancelada' }).eq('aluno_id', editingAluno.id).in('status', ['ativa', 'suspensa']);
+        }
+      }
       
       // Sempre sincronizar auth (email + senha baseada no CPF) ao editar
       try {
