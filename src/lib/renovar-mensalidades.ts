@@ -72,10 +72,15 @@ export async function renovarMensalidades() {
       proximoAno = ano;
       if (proximoMes > 12) { proximoMes = 1; proximoAno++; }
     } else {
-      // Sem mensalidade anterior: usar o mês da data_inicio da matrícula (nunca antes)
-      const [anoInicio, mesInicio] = (matricula.data_inicio || hoje).split('-').map(Number);
+      // Sem mensalidade anterior: usar o mês da data_inicio da matrícula
+      const [anoInicio, mesInicio, diaInicio] = (matricula.data_inicio || hoje).split('-').map(Number);
       proximoMes = mesInicio;
       proximoAno = anoInicio;
+      // Se o dia de vencimento já passou no mês de início, usar o próximo mês
+      if (diaVenc < diaInicio) {
+        proximoMes++;
+        if (proximoMes > 12) { proximoMes = 1; proximoAno++; }
+      }
     }
 
     // Verificar último dia do mês (regra: dia 31 → 30 se mês não tem 31)

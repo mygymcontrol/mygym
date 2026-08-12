@@ -291,22 +291,29 @@ export default function AlunosPage() {
 
         if (matricula) {
           // Gerar mensalidades
-          // Regra: primeira mensalidade = mês da data_inicio no dia_vencimento. Nunca gerar antes da data_inicio.
           const mensalidades = [];
           const valorMensal = valorTotal / duracao;
           const diaVenc = parseInt(form.dia_vencimento) || 10;
+          
+          // Calcular o primeiro mês de vencimento: se o dia de vencimento já passou no mês de início, começar no próximo mês
+          let mesInicial = mesI;
+          let anoInicial = anoI;
+          const ultimoDiaMesInicio = new Date(anoI, mesI, 0).getDate();
+          const diaVencInicio = Math.min(diaVenc, ultimoDiaMesInicio);
+          const primeiroVenc = `${anoI}-${String(mesI).padStart(2, '0')}-${String(diaVencInicio).padStart(2, '0')}`;
+          if (primeiroVenc < form.data_inicio) {
+            // Dia de vencimento já passou no mês de início, começar no próximo mês
+            mesInicial = mesI + 1;
+            if (mesInicial > 12) { mesInicial = 1; anoInicial++; }
+          }
+
           for (let i = 0; i < duracao; i++) {
-            const mes = mesI + i; // começa no mês da data_inicio
-            let ano = anoI;
-            let mesCalc = mes;
-            // Ajustar se passou de dezembro
+            let mesCalc = mesInicial + i;
+            let ano = anoInicial;
             while (mesCalc > 12) { mesCalc -= 12; ano++; }
-            // Verificar último dia do mês (para regra do dia 31 → 30)
             const ultimoDia = new Date(ano, mesCalc, 0).getDate();
             const diaFinal = Math.min(diaVenc, ultimoDia);
             const dataVenc = `${ano}-${String(mesCalc).padStart(2, '0')}-${String(diaFinal).padStart(2, '0')}`;
-            // Não gerar mensalidade antes da data de início
-            if (dataVenc < form.data_inicio) continue;
             mensalidades.push({
               matricula_id: matricula.id, aluno_id: novoAluno.id,
               valor: valorMensal, data_vencimento: dataVenc,
