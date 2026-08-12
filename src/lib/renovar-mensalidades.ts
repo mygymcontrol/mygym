@@ -40,16 +40,16 @@ export async function renovarMensalidades() {
 
     if (!matricula) continue;
 
-    // Verificar se já existe mensalidade pendente com vencimento >= hoje
+    // Verificar se já existe mensalidade (não cancelada) com vencimento >= hoje
     const { data: mensalidadeFutura } = await supabase
       .from('mensalidades')
       .select('id')
       .eq('aluno_id', aluno.id)
-      .in('status', ['pendente'])
+      .not('status', 'in', '("cancelado","suspenso")')
       .gte('data_vencimento', hoje)
       .limit(1);
 
-    // Se já tem mensalidade futura pendente, não gerar nova
+    // Se já tem mensalidade futura ativa, não gerar nova
     if (mensalidadeFutura && mensalidadeFutura.length > 0) continue;
 
     // Buscar última mensalidade para saber o próximo mês
@@ -123,6 +123,17 @@ export async function renovarMensalidades() {
 
     // Determinar status: se vencimento já passou, já nasce como atrasado
     const status = dataVencimento < hoje ? 'atrasado' : 'pendente';
+
+    // Verificação final: confirmar que não existe mensalidade para essa data antes de inserir
+    const { data: jaExiste } = await supabase
+      .from('mensalidades')
+      .select('id')
+      .eq('aluno_id', aluno.id)
+      .eq('data_vencimento', dataVencimento)
+      .not('status', 'eq', 'cancelado')
+      .limit(1);
+
+    if (jaExiste && jaExiste.length > 0) continue;
 
     // Inserir nova mensalidade
     await supabase.from('mensalidades').insert({
