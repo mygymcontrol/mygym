@@ -270,7 +270,7 @@ export default function AlunosPage() {
         const valorTotal = calcValorTotal(selectedMods, form.convenio_id);
         const mod0 = modalidades.find(m => m.id === selectedMods[0]);
         const duracao = mod0?.planos ? mod0.planos.duracao_meses || 1 : 1;
-        const planoId = mod0?.plano_id;
+        const planoId = mod0?.plano_id || null;
 
         // Usar split para evitar problemas de timezone
         const [anoI, mesI, diaI] = form.data_inicio.split('-').map(Number);
@@ -279,45 +279,49 @@ export default function AlunosPage() {
         const mesRealFim = ((mesFim - 1) % 12) + 1;
         const dataFimStr = `${anoFim}-${String(mesRealFim).padStart(2, '0')}-${String(diaI).padStart(2, '0')}`;
 
-        if (planoId) {
-          const { data: matricula } = await supabase.from('matriculas').insert({
-            aluno_id: novoAluno.id, plano_id: planoId,
-            data_inicio: form.data_inicio, data_fim: dataFimStr,
-            valor_final: valorTotal, status: 'ativa',
-          }).select().single();
+        // Sempre criar matrícula (com ou sem plano_id)
+        const matriculaPayload: any = {
+          aluno_id: novoAluno.id,
+          data_inicio: form.data_inicio, data_fim: dataFimStr,
+          valor_final: valorTotal, status: 'ativa',
+        };
+        if (planoId) matriculaPayload.plano_id = planoId;
 
-          if (matricula) {
-            // Gerar mensalidades
-            // Regra: primeira mensalidade = mês da data_inicio no dia_vencimento. Nunca gerar antes da data_inicio.
-            const mensalidades = [];
-            const valorMensal = valorTotal / duracao;
-            const diaVenc = parseInt(form.dia_vencimento) || 10;
-            for (let i = 0; i < duracao; i++) {
-              const mes = mesI + i; // começa no mês da data_inicio
-              let ano = anoI;
-              let mesCalc = mes;
-              // Ajustar se passou de dezembro
-              while (mesCalc > 12) { mesCalc -= 12; ano++; }
-              // Verificar último dia do mês (para regra do dia 31 → 30)
-              const ultimoDia = new Date(ano, mesCalc, 0).getDate();
-              const diaFinal = Math.min(diaVenc, ultimoDia);
-              const dataVenc = `${ano}-${String(mesCalc).padStart(2, '0')}-${String(diaFinal).padStart(2, '0')}`;
-              // Não gerar mensalidade antes da data de início
-              if (dataVenc < form.data_inicio) continue;
-              mensalidades.push({
-                matricula_id: matricula.id, aluno_id: novoAluno.id,
-                valor: valorMensal, data_vencimento: dataVenc,
-                status: i === 0 && form.primeiro_pagamento_confirmado ? 'pago' : (dataVenc < new Date().toISOString().split('T')[0] ? 'atrasado' : 'pendente'),
-                data_pagamento: i === 0 && form.primeiro_pagamento_confirmado ? new Date().toISOString().split('T')[0] : null,
-                forma_pagamento: i === 0 && form.primeiro_pagamento_confirmado ? form.forma_pagamento_inicial : null,
-              });
-            }
-            await supabase.from('mensalidades').insert(mensalidades);
-            await supabase.from('log_matriculas').insert({
-              matricula_id: matricula.id, aluno_id: novoAluno.id, acao: 'criada',
-              observacao: `Modalidades: ${selectedMods.map(id => modalidades.find(m => m.id === id)?.nome).join(', ')} - R$ ${valorTotal.toFixed(2)}`,
+        const { data: matricula } = await supabase.from('matriculas').insert(matriculaPayload).select().single();
+
+        if (matricula) {
+          // Gerar mensalidades
+          // Regra: primeira mensalidade = mês da data_inicio no dia_vencimento. Nunca gerar antes da data_inicio.
+          const mensalidades = [];
+          const valorMensal = valorTotal / duracao;
+          const diaVenc = parseInt(form.dia_vencimento) || 10;
+          for (let i = 0; i < duracao; i++) {
+            const mes = mesI + i; // começa no mês da data_inicio
+            let ano = anoI;
+            let mesCalc = mes;
+            // Ajustar se passou de dezembro
+            while (mesCalc > 12) { mesCalc -= 12; ano++; }
+            // Verificar último dia do mês (para regra do dia 31 → 30)
+            const ultimoDia = new Date(ano, mesCalc, 0).getDate();
+            const diaFinal = Math.min(diaVenc, ultimoDia);
+            const dataVenc = `${ano}-${String(mesCalc).padStart(2, '0')}-${String(diaFinal).padStart(2, '0')}`;
+            // Não gerar mensalidade antes da data de início
+            if (dataVenc < form.data_inicio) continue;
+            mensalidades.push({
+              matricula_id: matricula.id, aluno_id: novoAluno.id,
+              valor: valorMensal, data_vencimento: dataVenc,
+              status: i === 0 && form.primeiro_pagamento_confirmado ? 'pago' : (dataVenc < new Date().toISOString().split('T')[0] ? 'atrasado' : 'pendente'),
+              data_pagamento: i === 0 && form.primeiro_pagamento_confirmado ? new Date().toISOString().split('T')[0] : null,
+              forma_pagamento: i === 0 && form.primeiro_pagamento_confirmado ? form.forma_pagamento_inicial : null,
             });
           }
+          if (mensalidades.length > 0) {
+            await supabase.from('mensalidades').insert(mensalidades);
+          }
+          await supabase.from('log_matriculas').insert({
+            matricula_id: matricula.id, aluno_id: novoAluno.id, acao: 'criada',
+            observacao: `Modalidades: ${selectedMods.map(id => modalidades.find(m => m.id === id)?.nome).join(', ')} - R$ ${valorTotal.toFixed(2)}`,
+          });
         }
       }
 
