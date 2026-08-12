@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MyGym - Apresentação</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  
+  @page { size: A4 portrait; margin: 0; }
+  
+  body {
+    font-family: 'Inter', sans-serif;
+    background: #f5f5f5;
+    color: #1a1a2e;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .page {
+    width: 210mm;
+    min-height: 297mm;
+    margin: 0 auto;
+    background: white;
+    position: relative;
+    overflow: hidden;
+    page-break-after: always;
+    padding: 0;
+  }
+
+  @media screen {
+    .page { margin: 20px auto; box-shadow: 0 4px 40px rgba(0,0,0,0.15); border-radius: 4px; }
+  }
+
+  /* ═══ PAGE 1 - CAPA ═══ */
+  .cover {
+    background: linear-gradient(135deg, #0a0a1a 0%, #1a1a3e 50%, #0d0d2a 100%);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    text-align: center; color: white; padding: 60px 50px;
+  }
+  .cover::before {
+    content: ''; position: absolute; inset: 0;
+    background: radial-gradient(ellipse 80% 60% at 50% 30%, rgba(76, 175, 80, 0.08) 0%, transparent 70%),
+                radial-gradient(ellipse 60% 50% at 20% 80%, rgba(76, 175, 80, 0.05) 0%, transparent 60%);
+  }
+  .cover-content { position: relative; z-index: 1; }
+  .cover-logo {
+    width: 100px; height: 100px; border-radius: 24px;
+    background: linear-gradient(135deg, #4CAF50, #2E7D32);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 48px; margin: 0 auto 30px;
+    box-shadow: 0 12px 40px rgba(76, 175, 80, 0.3);
+  }
+  .cover h1 {
+    font-size: 52px; font-weight: 900; letter-spacing: -1px;
+    margin-bottom: 8px;
+  }
+  .cover h1 span { color: #4CAF50; }
+  .cover .subtitle {
+    font-size: 18px; font-weight: 300; color: rgba(255,255,255,0.7);
+    margin-bottom: 50px; letter-spacing: 0.5px;
+  }
+  .cover-features {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 16px;
+    width: 100%; max-width: 500px; text-align: left;
+  }
+  .cover-feat {
+    background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 12px; padding: 16px 18px;
+    display: flex; align-items: center; gap: 12px;
+  }
+  .cover-feat-icon {
+    width: 36px; height: 36px; border-radius: 8px;
+    background: rgba(76, 175, 80, 0.15); display: flex;
+    align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0;
+  }
+  .cover-feat-text { font-size: 12px; color: rgba(255,255,255,0.85); font-weight: 500; }
+  .cover-footer {
+    position: absolute; bottom: 40px; left: 0; right: 0;
+    text-align: center; font-size: 11px; color: rgba(255,255,255,0.35);
+    letter-spacing: 1px;
+  }
+
+  /* ═══ PAGE 2+ - CONTEÚDO ═══ */
+  .content-page { padding: 45px 50px; }
+  
+  .section-header {
+    display: flex; align-items: center; gap: 14px;
+    margin-bottom: 28px; padding-bottom: 16px;
+    border-bottom: 2px solid #f0f0f0;
+  }
+  .section-icon {
+    width: 44px; height: 44px; border-radius: 12px;
+    background: linear-gradient(135deg, #4CAF50, #2E7D32);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px; color: white; flex-shrink: 0;
+  }
+  .section-title { font-size: 22px; font-weight: 800; color: #1a1a2e; }
+  .section-sub { font-size: 12px; color: #666; margin-top: 2px; }
+
+  .feature-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  
+  .feature-card {
+    background: #f8faf8; border: 1px solid #e8f0e8;
+    border-radius: 14px; padding: 20px;
+    transition: all 0.2s;
+  }
+  .feature-card-header {
+    display: flex; align-items: center; gap: 10px; margin-bottom: 10px;
+  }
+  .feature-card-icon {
+    width: 32px; height: 32px; border-radius: 8px;
+    background: rgba(76, 175, 80, 0.12); display: flex;
+    align-items: center; justify-content: center; font-size: 16px;
+  }
+  .feature-card-title { font-size: 13px; font-weight: 700; color: #1a1a2e; }
+  .feature-card p { font-size: 11px; color: #555; line-height: 1.6; }
+
+  .feature-list { list-style: none; }
+  .feature-list li {
+    display: flex; align-items: flex-start; gap: 10px;
+    padding: 12px 0; border-bottom: 1px solid #f0f0f0;
+  }
+  .feature-list li:last-child { border-bottom: none; }
+  .feature-list .bullet {
+    width: 22px; height: 22px; border-radius: 6px;
+    background: #4CAF50; color: white; font-size: 11px; font-weight: 700;
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    margin-top: 1px;
+  }
+  .feature-list .feat-content { flex: 1; }
+  .feature-list .feat-title { font-size: 13px; font-weight: 700; color: #1a1a2e; margin-bottom: 2px; }
+  .feature-list .feat-desc { font-size: 11px; color: #555; line-height: 1.5; }
+
+  .highlight-box {
+    background: linear-gradient(135deg, #0a0a1a, #1a1a3e);
+    border-radius: 16px; padding: 28px; color: white;
+    margin-top: 24px; position: relative; overflow: hidden;
+  }
+  .highlight-box::after {
+    content: ''; position: absolute; top: -30px; right: -30px;
+    width: 120px; height: 120px; border-radius: 50%;
+    background: rgba(76, 175, 80, 0.1);
+  }
+  .highlight-box h3 { font-size: 16px; font-weight: 700; margin-bottom: 8px; }
+  .highlight-box p { font-size: 12px; color: rgba(255,255,255,0.7); line-height: 1.6; }
+
+  .stats-grid {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;
+    margin-top: 20px;
+  }
+  .stat-card {
+    background: #f8faf8; border: 1px solid #e8f0e8;
+    border-radius: 12px; padding: 18px; text-align: center;
+  }
+  .stat-card .num { font-size: 28px; font-weight: 900; color: #4CAF50; }
+  .stat-card .lbl { font-size: 10px; color: #666; text-transform: uppercase; letter-spacing: 0.5px; margin-top: 4px; }
+
+  .page-number {
+    position: absolute; bottom: 25px; right: 50px;
+    font-size: 10px; color: #999; font-weight: 500;
+  }
+  .page-logo-footer {
+    position: absolute; bottom: 25px; left: 50px;
+    font-size: 12px; font-weight: 800; color: #ccc;
+  }
+  .page-logo-footer span { color: #4CAF50; }
+
+  .tech-badges {
+    display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px;
+  }
+  .tech-badge {
+    background: #f0f0f0; border-radius: 20px; padding: 6px 14px;
+    font-size: 10px; font-weight: 600; color: #444;
+  }
+</style>
+</head>
+<body>
+
+<!-- ═══════════ PÁGINA 1 - CAPA ═══════════ -->
+<div class="page cover">
+  <div class="cover-content">
+    <div class="cover-logo">💪</div>
+    <h1>My<span>Gym</span></h1>
+    <p class="subtitle">Sistema completo de gestão para academias</p>
+    
+    <div class="cover-features">
+      <div class="cover-feat">
+        <div class="cover-feat-icon">👥</div>
+        <span class="cover-feat-text">Gestão de Alunos</span>
+      </div>
+      <div class="cover-feat">
+        <div class="cover-feat-icon">💰</div>
+        <span class="cover-feat-text">Controle Financeiro</span>
+      </div>
+      <div class="cover-feat">
+        <div class="cover-feat-icon">📱</div>
+        <span class="cover-feat-text">Check-in por QR Code</span>
+      </div>
+      <div class="cover-feat">
+        <div class="cover-feat-icon">📊</div>
+        <span class="cover-feat-text">Dashboard em Tempo Real</span>
+      </div>
+      <div class="cover-feat">
+        <div class="cover-feat-icon">📋</div>
+        <span class="cover-feat-text">Treinos e Módulos</span>
+      </div>
+      <div class="cover-feat">
+        <div class="cover-feat-icon">🤝</div>
+        <span class="cover-feat-text">Convênios e Parcerias</span>
+      </div>
+    </div>
+  </div>
+  <div class="cover-footer">SISTEMA WEB • ACESSO DE QUALQUER DISPOSITIVO • 2026</div>
+</div>
+
+<!-- ═══════════ PÁGINA 2 - FUNCIONALIDADES PRINCIPAIS ═══════════ -->
+<div class="page content-page">
+  <div class="section-header">
+    <div class="section-icon">⚡</div>
+    <div>
+      <div class="section-title">Funcionalidades Principais</div>
+      <div class="section-sub">Tudo que sua academia precisa em um só lugar</div>
+    </div>
+  </div>
+
+  <div class="feature-grid">
+    <div class="feature-card">
+      <div class="feature-card-header">
+        <div class="feature-card-icon">👥</div>
+        <div class="feature-card-title">Gestão de Alunos</div>
+      </div>
+      <p>Cadastro completo com CPF, telefone, e-mail, endereço. Controle de status (ativo, suspenso, cancelado). Vinculação automática de modalidades e planos.</p>
+    </div>
+
+    <div class="feature-card">
+      <div class="feature-card-header">
+        <div class="feature-card-icon">💰</div>
+        <div class="feature-card-title">Mensalidades</div>
+      </div>
+      <p>Geração automática de cobranças. Controle de pagamentos, atrasos e suspensões. Envio de cobrança via WhatsApp. Comprovantes com upload de imagem.</p>
+    </div>
+
+    <div class="feature-card">
+      <div class="feature-card-header">
+        <div class="feature-card-icon">📱</div>
+        <div class="feature-card-title">Check-in QR Code</div>
+      </div>
+      <p>Aluno faz check-in lendo QR Code na academia. Registro automático de presença por dia e horário. Histórico completo de frequência.</p>
+    </div>
+
+    <div class="feature-card">
+      <div class="feature-card-header">
+        <div class="feature-card-icon">📊</div>
+        <div class="feature-card-title">Dashboard</div>
+      </div>
+      <p>Visão geral em tempo real: alunos ativos, inadimplentes, receita do mês, check-ins do dia, mensalidades pendentes e alunos sem plano.</p>
+    </div>
+
+    <div class="feature-card">
+      <div class="feature-card-header">
+        <div class="feature-card-icon">🏋️</div>
+        <div class="feature-card-title">Modalidades e Planos</div>
+      </div>
+      <p>Cadastro de modalidades com valores individuais. Planos flexíveis com duração customizada. Múltiplas modalidades por aluno.</p>
+    </div>
+
+    <div class="feature-card">
+      <div class="feature-card-header">
+        <div class="feature-card-icon">🤝</div>
+        <div class="feature-card-title">Convênios</div>
+      </div>
+      <p>Parcerias com empresas e instituições. Desconto percentual automático. Cobrança por check-in (ex: Gympass). Relatório de uso por convênio.</p>
+    </div>
+
+    <div class="feature-card">
+      <div class="feature-card-header">
+        <div class="feature-card-icon">👨‍🏫</div>
+        <div class="feature-card-title">Professores</div>
+      </div>
+      <p>Cadastro de professores com vínculo a modalidades. Painel exclusivo do professor com lista de alunos e check-ins da sua turma.</p>
+    </div>
+
+    <div class="feature-card">
+      <div class="feature-card-header">
+        <div class="feature-card-icon">📋</div>
+        <div class="feature-card-title">Treinos Especiais</div>
+      </div>
+      <p>Módulos de treino guiados (Hipertrofia). Ativação individual por aluno. Acesso via área do aluno com conteúdo exclusivo.</p>
+    </div>
+  </div>
+
+  <div class="page-logo-footer">My<span>Gym</span></div>
+  <div class="page-number">02</div>
+</div>
+
+<!-- ═══════════ PÁGINA 3 - AUTOMAÇÕES E DIFERENCIAIS ═══════════ -->
+<div class="page content-page">
+  <div class="section-header">
+    <div class="section-icon">🤖</div>
+    <div>
+      <div class="section-title">Automações e Diferenciais</div>
+      <div class="section-sub">O sistema trabalha para você</div>
+    </div>
+  </div>
+
+  <ul class="feature-list">
+    <li>
+      <div class="bullet">1</div>
+      <div class="feat-content">
+        <div class="feat-title">Mensalidades Automáticas</div>
+        <div class="feat-desc">O sistema gera automaticamente as mensalidades com base no dia de vencimento configurado. Quando vence, marca como atrasado automaticamente.</div>
+      </div>
+    </li>
+    <li>
+      <div class="bullet">2</div>
+      <div class="feat-content">
+        <div class="feat-title">Sincronização de Status</div>
+        <div class="feat-desc">Ao suspender ou reativar um aluno, todas as mensalidades e matrículas são atualizadas instantaneamente. Meses suspensos são desconsiderados.</div>
+      </div>
+    </li>
+    <li>
+      <div class="bullet">3</div>
+      <div class="feat-content">
+        <div class="feat-title">Cobrança via WhatsApp</div>
+        <div class="feat-desc">Envie mensagens de cobrança personalizadas diretamente pelo WhatsApp com um clique. Seleção em lote para cobranças em massa.</div>
+      </div>
+    </li>
+    <li>
+      <div class="bullet">4</div>
+      <div class="feat-content">
+        <div class="feat-title">Área do Aluno</div>
+        <div class="feat-desc">O aluno acessa com e-mail e senha (CPF). Visualiza treinos, horários e informações. QR Code para check-in rápido.</div>
+      </div>
+    </li>
+    <li>
+      <div class="bullet">5</div>
+      <div class="feat-content">
+        <div class="feat-title">Mural de Avisos</div>
+        <div class="feat-desc">Publique comunicados visíveis para todos os alunos ao fazer login. Informações importantes sempre visíveis.</div>
+      </div>
+    </li>
+    <li>
+      <div class="bullet">6</div>
+      <div class="feat-content">
+        <div class="feat-title">Relatórios Financeiros</div>
+        <div class="feat-desc">Receita por mês, inadimplência, alunos por modalidade, convênios ativos. Dados para decisões estratégicas.</div>
+      </div>
+    </li>
+    <li>
+      <div class="bullet">7</div>
+      <div class="feat-content">
+        <div class="feat-title">Multi-academia (Super Admin)</div>
+        <div class="feat-desc">Painel administrativo para gerenciar múltiplas unidades. Controle centralizado com dados separados por academia.</div>
+      </div>
+    </li>
+    <li>
+      <div class="bullet">8</div>
+      <div class="feat-content">
+        <div class="feat-title">Pré-Cadastros</div>
+        <div class="feat-desc">Alunos interessados podem se pré-cadastrar. O proprietário converte em matrícula com um clique quando confirmado.</div>
+      </div>
+    </li>
+  </ul>
+
+  <div class="page-logo-footer">My<span>Gym</span></div>
+  <div class="page-number">03</div>
+</div>
+
+<!-- ═══════════ PÁGINA 4 - TECNOLOGIA E ACESSO ═══════════ -->
+<div class="page content-page">
+  <div class="section-header">
+    <div class="section-icon">🚀</div>
+    <div>
+      <div class="section-title">Tecnologia e Acesso</div>
+      <div class="section-sub">Moderno, rápido e acessível de qualquer lugar</div>
+    </div>
+  </div>
+
+  <div class="feature-grid" style="margin-bottom: 24px;">
+    <div class="feature-card">
+      <div class="feature-card-header">
+        <div class="feature-card-icon">🌐</div>
+        <div class="feature-card-title">100% Web</div>
+      </div>
+      <p>Acesse pelo navegador de qualquer dispositivo: computador, tablet ou celular. Nenhuma instalação necessária.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-card-header">
+        <div class="feature-card-icon">📱</div>
+        <div class="feature-card-title">Responsivo</div>
+      </div>
+      <p>Interface adaptada para telas de qualquer tamanho. Funciona perfeitamente no celular do proprietário.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-card-header">
+        <div class="feature-card-icon">🔒</div>
+        <div class="feature-card-title">Seguro</div>
+      </div>
+      <p>Dados criptografados e armazenados em nuvem. Autenticação segura com controle de permissões por perfil.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-card-header">
+        <div class="feature-card-icon">⚡</div>
+        <div class="feature-card-title">Rápido</div>
+      </div>
+      <p>Carregamento instantâneo com queries otimizadas. Sem travamentos, mesmo com centenas de alunos cadastrados.</p>
+    </div>
+  </div>
+
+  <div class="stats-grid">
+    <div class="stat-card"><div class="num">∞</div><div class="lbl">Alunos ilimitados</div></div>
+    <div class="stat-card"><div class="num">24/7</div><div class="lbl">Disponível sempre</div></div>
+    <div class="stat-card"><div class="num">0</div><div class="lbl">Instalações</div></div>
+  </div>
+
+  <div class="highlight-box">
+    <h3>Perfis de Acesso</h3>
+    <p><strong>Proprietário:</strong> Acesso total — gestão de alunos, financeiro, configurações, relatórios e WhatsApp.</p>
+    <p style="margin-top:6px"><strong>Professor:</strong> Visualiza alunos das suas modalidades, check-ins e presença da turma.</p>
+    <p style="margin-top:6px"><strong>Aluno:</strong> Área exclusiva com QR Code para check-in, treinos disponíveis e informações pessoais.</p>
+  </div>
+
+  <div style="margin-top: 24px;">
+    <div style="font-size:12px; font-weight:700; color:#1a1a2e; margin-bottom:10px;">Tecnologias utilizadas:</div>
+    <div class="tech-badges">
+      <span class="tech-badge">Next.js 14</span>
+      <span class="tech-badge">React</span>
+      <span class="tech-badge">TypeScript</span>
+      <span class="tech-badge">Supabase</span>
+      <span class="tech-badge">Tailwind CSS</span>
+      <span class="tech-badge">Vercel</span>
+      <span class="tech-badge">PostgreSQL</span>
+    </div>
+  </div>
+
+  <div class="page-logo-footer">My<span>Gym</span></div>
+  <div class="page-number">04</div>
+</div>
+
+</body>
+</html>
