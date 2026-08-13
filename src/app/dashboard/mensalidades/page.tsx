@@ -64,20 +64,14 @@ export default function MensalidadesPage() {
     const inicioMes = `${anoAtual}-${String(mesAtual).padStart(2, '0')}-01`;
     const ultimoDia = new Date(anoAtual, mesAtual, 0).getDate();
     const fimMes = `${anoAtual}-${String(mesAtual).padStart(2, '0')}-${ultimoDia}`;
-    // Incluir também o próximo mês (para alunos cadastrados no final do mês atual)
-    let proxMes = mesAtual + 1;
-    let proxAno = anoAtual;
-    if (proxMes > 12) { proxMes = 1; proxAno++; }
-    const ultimoDiaProx = new Date(proxAno, proxMes, 0).getDate();
-    const fimProxMes = `${proxAno}-${String(proxMes).padStart(2, '0')}-${ultimoDiaProx}`;
 
-    // Buscar em paralelo: mensalidades do mês atual e próximo + atrasadas
+    // Buscar em paralelo: mensalidades do mês atual + atrasadas
     const [{ data: mesAtualData }, { data: atrasadasData }] = await Promise.all([
       supabase
         .from('mensalidades')
         .select('*, alunos(nome, telefone, email, convenio_id, convenios(nome, valor_checkin, desconto_percentual))')
         .gte('data_vencimento', inicioMes)
-        .lte('data_vencimento', fimProxMes)
+        .lte('data_vencimento', fimMes)
         .not('status', 'eq', 'cancelado')
         .order('data_vencimento', { ascending: false }),
       supabase
