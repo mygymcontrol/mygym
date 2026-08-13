@@ -295,21 +295,10 @@ export default function AlunosPage() {
           const valorMensal = valorTotal / duracao;
           const diaVenc = parseInt(form.dia_vencimento) || 10;
           
-          // Calcular o primeiro mês de vencimento: se o dia de vencimento já passou no mês de início, começar no próximo mês
-          let mesInicial = mesI;
-          let anoInicial = anoI;
-          const ultimoDiaMesInicio = new Date(anoI, mesI, 0).getDate();
-          const diaVencInicio = Math.min(diaVenc, ultimoDiaMesInicio);
-          const primeiroVenc = `${anoI}-${String(mesI).padStart(2, '0')}-${String(diaVencInicio).padStart(2, '0')}`;
-          if (primeiroVenc < form.data_inicio) {
-            // Dia de vencimento já passou no mês de início, começar no próximo mês
-            mesInicial = mesI + 1;
-            if (mesInicial > 12) { mesInicial = 1; anoInicial++; }
-          }
-
+          // Primeira mensalidade SEMPRE no mês da data_inicio (mesmo se dia já passou)
           for (let i = 0; i < duracao; i++) {
-            let mesCalc = mesInicial + i;
-            let ano = anoInicial;
+            let mesCalc = mesI + i;
+            let ano = anoI;
             while (mesCalc > 12) { mesCalc -= 12; ano++; }
             const ultimoDia = new Date(ano, mesCalc, 0).getDate();
             const diaFinal = Math.min(diaVenc, ultimoDia);
