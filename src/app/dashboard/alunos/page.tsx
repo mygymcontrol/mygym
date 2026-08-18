@@ -135,6 +135,27 @@ export default function AlunosPage() {
           await supabase.from('mensalidades').update({ status: 'pendente' }).eq('aluno_id', editingAluno.id).in('status', ['suspenso', 'cancelado']).gte('data_vencimento', hoje);
           await supabase.from('mensalidades').update({ status: 'cancelado' }).eq('aluno_id', editingAluno.id).eq('status', 'suspenso').lt('data_vencimento', hoje);
           await supabase.from('matriculas').update({ status: 'ativa' }).eq('aluno_id', editingAluno.id).in('status', ['suspensa', 'cancelada']);
+
+          // Garantir que existe mensalidade no mês atual ao reativar
+          const now = new Date();
+          const mesAtual = now.getMonth() + 1;
+          const anoAtual = now.getFullYear();
+          const inicioMes = `${anoAtual}-${String(mesAtual).padStart(2, '0')}-01`;
+          const fimMes = `${anoAtual}-${String(mesAtual).padStart(2, '0')}-31`;
+          const { data: mensAtual } = await supabase.from('mensalidades').select('id').eq('aluno_id', editingAluno.id).gte('data_vencimento', inicioMes).lte('data_vencimento', fimMes).not('status', 'eq', 'cancelado').limit(1);
+          
+          if (!mensAtual || mensAtual.length === 0) {
+            const { data: matAtiva } = await supabase.from('matriculas').select('id, valor_final').eq('aluno_id', editingAluno.id).eq('status', 'ativa').single();
+            if (matAtiva) {
+              const diaVenc = parseInt(form.dia_vencimento) || 10;
+              const dataVenc = `${anoAtual}-${String(mesAtual).padStart(2, '0')}-${String(diaVenc).padStart(2, '0')}`;
+              const valorFinal = matAtiva.valor_final || 100;
+              await supabase.from('mensalidades').insert({
+                matricula_id: matAtiva.id, aluno_id: editingAluno.id,
+                valor: valorFinal, data_vencimento: dataVenc, status: 'pendente',
+              });
+            }
+          }
         } else if (form.status === 'cancelado') {
           // Cancelar: mensalidades pendentes/atrasadas → cancelado, matrícula → cancelada
           await supabase.from('mensalidades').update({ status: 'cancelado' }).eq('aluno_id', editingAluno.id).in('status', ['pendente', 'atrasado', 'suspenso']);
@@ -427,6 +448,28 @@ export default function AlunosPage() {
       const hoje = new Date().toISOString().split('T')[0];
       await supabase.from('mensalidades').update({ status: 'pendente' }).eq('aluno_id', aluno.id).eq('status', 'suspenso').gte('data_vencimento', hoje);
       await supabase.from('mensalidades').update({ status: 'cancelado' }).eq('aluno_id', aluno.id).eq('status', 'suspenso').lt('data_vencimento', hoje);
+
+      // Garantir que existe mensalidade no mês atual
+      const now = new Date();
+      const mesAtual = now.getMonth() + 1;
+      const anoAtual = now.getFullYear();
+      const inicioMes = `${anoAtual}-${String(mesAtual).padStart(2, '0')}-01`;
+      const fimMes = `${anoAtual}-${String(mesAtual).padStart(2, '0')}-31`;
+      const { data: mensAtual } = await supabase.from('mensalidades').select('id').eq('aluno_id', aluno.id).gte('data_vencimento', inicioMes).lte('data_vencimento', fimMes).not('status', 'eq', 'cancelado').limit(1);
+      
+      if (!mensAtual || mensAtual.length === 0) {
+        // Criar mensalidade para o mês atual
+        const matAtiva = aluno.matriculas?.find((m: any) => m.status === 'ativa' || m.status === 'suspensa');
+        if (matAtiva) {
+          const diaVenc = (aluno as any).dia_vencimento || 10;
+          const dataVenc = `${anoAtual}-${String(mesAtual).padStart(2, '0')}-${String(diaVenc).padStart(2, '0')}`;
+          const valorFinal = matAtiva.valor_final || 100;
+          await supabase.from('mensalidades').insert({
+            matricula_id: matAtiva.id, aluno_id: aluno.id,
+            valor: valorFinal, data_vencimento: dataVenc, status: 'pendente',
+          });
+        }
+      }
     }
 
     // Log
